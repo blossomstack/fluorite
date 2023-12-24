@@ -1,4 +1,7 @@
-use crate::code_gen::abi::{CustomTypeWriter, TypeInfo};
+use crate::code_gen::{
+    abi::{CustomTypeWriter, TypeInfo},
+    utils::{get_field_type, FieldType},
+};
 
 use super::RustContext;
 use std::{
@@ -8,7 +11,7 @@ use std::{
 
 use anyhow::anyhow;
 
-use crate::definitions::{Field, FieldType};
+use crate::definitions::Field;
 
 pub struct RustTypeWriter {}
 
@@ -69,13 +72,13 @@ impl CustomTypeWriter<RustContext> for RustTypeWriter {
         type_info: &TypeInfo,
         context: &RustContext,
     ) -> anyhow::Result<()> {
-        let type_to_write = match &field.field_type {
-            FieldType::Simple(t) => context.options.get_simple_type(t),
+        let type_to_write = match get_field_type(&field.field_type) {
+            FieldType::Simple(t) => context.options.get_simple_type(&t),
             FieldType::Custom { name } => {
                 // check if the field type and current type is in same cyclic ref group
                 let ref_type = context
                     .type_dict
-                    .get(name)
+                    .get(&name)
                     .ok_or_else(|| anyhow!("Cannot find field type: {}", name))?;
                 let full_type_name = self.get_fully_qualified_type_name(ref_type, context);
                 if context.is_cyclic_ref(type_info, ref_type) {

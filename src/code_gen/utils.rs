@@ -1,11 +1,26 @@
-use crate::definitions::{CustomType, FieldType};
+use core::fmt;
+use std::fmt::Display;
+
+use crate::definitions::{CustomType, SimpleType};
+
+impl Display for SimpleType {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{:?}", &self)
+    }
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub(crate) enum FieldType {
+    Simple(SimpleType),
+    Custom { name: String },
+}
 
 pub fn get_ref_types(value: &CustomType) -> Vec<String> {
     match value {
         CustomType::Object { name: _, fields } => fields
             .iter()
             .filter(|f| is_custom_type(&f.field_type))
-            .map(|f| get_field_type_name(&f.field_type))
+            .map(|f| f.field_type.to_string())
             .collect(),
         CustomType::Enum { name: _, values: _ } => vec![],
     }
@@ -18,10 +33,25 @@ pub fn get_field_type_name(field_type: &FieldType) -> String {
     }
 }
 
-pub fn is_custom_type(field_type: &FieldType) -> bool {
-    match field_type {
-        FieldType::Simple(_) => false,
-        FieldType::Custom { name: _ } => true,
+pub fn is_custom_type(field_type: &str) -> bool {
+    let opt_simple_type = SimpleType::all_values()
+        .into_iter()
+        .find(|t| t.to_string() == field_type);
+    match opt_simple_type {
+        Some(_) => false,
+        None => true,
+    }
+}
+
+pub fn get_field_type(field_type: &str) -> FieldType {
+    let opt_simple_type = SimpleType::all_values()
+        .into_iter()
+        .find(|t| t.to_string() == field_type);
+    match opt_simple_type {
+        Some(t) => FieldType::Simple(t),
+        None => FieldType::Custom {
+            name: field_type.to_owned(),
+        },
     }
 }
 
