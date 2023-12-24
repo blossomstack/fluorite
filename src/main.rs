@@ -2,6 +2,7 @@ use clap::Parser;
 
 use crate::utils::deserialize_definition_file;
 
+mod code_gen;
 mod definitions;
 mod utils;
 

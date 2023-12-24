@@ -1,6 +1,25 @@
 use std::fs;
 
-use crate::definitions::Definition;
+use crate::{
+    code_gen::{
+        rust::{RustOptions, RustProvider},
+        CodeGenerator,
+    },
+    definitions::Definition,
+};
+
+pub fn compile(sources: &[&str], output: &str) -> anyhow::Result<()> {
+    let definitions = sources
+        .iter()
+        .map(|s| deserialize_definition_file(s))
+        .collect::<anyhow::Result<Vec<Definition>>>()?;
+    let options = RustOptions::new(output.to_owned());
+    let config = RustProvider::new(options);
+
+    let generator = CodeGenerator::new(Box::new(config));
+    generator.generate(&definitions)?;
+    Ok(())
+}
 
 pub(crate) fn deserialize_definition_file(file_path: &str) -> anyhow::Result<Definition> {
     let file_content = fs::read_to_string(file_path)?;

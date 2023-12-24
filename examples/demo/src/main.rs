@@ -1,4 +1,6 @@
-mod demo;
+mod demo {
+    include!(concat!(env!("OUT_DIR"), "/demo/mod.rs"));
+}
 use demo::{Gender, User};
 fn main() {
     let user = User {

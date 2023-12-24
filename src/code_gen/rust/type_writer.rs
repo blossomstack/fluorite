@@ -13,7 +13,11 @@ use crate::definitions::{Field, FieldType};
 pub struct RustTypeWriter {}
 
 impl RustTypeWriter {
-    fn get_fully_qualified_type_name(&self, type_info: &TypeInfo, _context: &RustContext) -> String {
+    fn get_fully_qualified_type_name(
+        &self,
+        type_info: &TypeInfo,
+        _context: &RustContext,
+    ) -> String {
         format!("crate::{}::{}", type_info.package, type_info.type_name(),)
     }
 }
@@ -39,7 +43,7 @@ impl CustomTypeWriter<RustContext> for RustTypeWriter {
     fn pre_write_type(
         &self,
         writer: &mut Box<dyn Write>,
-        type_info: &TypeInfo,
+        _type_info: &TypeInfo,
         _context: &RustContext,
     ) -> anyhow::Result<()> {
         writer.write_all("use serde::{Serialize, Deserialize};".as_bytes())?;
