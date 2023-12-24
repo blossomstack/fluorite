@@ -1,64 +1,38 @@
-use std::collections::HashMap;
-
-use crate::code_gen::utils::get_type_name;
-mod type_graph;
-
 mod pre_processor;
+mod type_graph;
 pub use pre_processor::*;
 mod package_writer;
 pub use package_writer::*;
 mod type_writer;
 pub use type_writer::*;
+mod options;
+pub use options::*;
+mod context;
+pub use context::*;
 
-use super::abi::{
-    CodeGenConfig, CodeGenContext, CustomTypeWriter, PackageWriter, PreProcessor, TypeInfo,
-};
-pub struct RustCodeGenConfig {}
+use super::abi::{CodeGenProvider, CustomTypeWriter, PackageWriter, PreProcessor};
 
-struct ExtraTypeInfo {
-    cyclic_ref_group_id: Option<u32>,
+pub struct RustProvider {
+    options: RustOptions,
 }
 
-pub struct RustCodeGenContext {
-    extra_type_infos: HashMap<String, ExtraTypeInfo>,
-    type_dict: HashMap<String, TypeInfo>,
+impl RustProvider {
+    pub fn new(options: RustOptions) -> Self {
+        Self { options }
+    }
 }
-impl CodeGenConfig<RustCodeGenContext> for RustCodeGenConfig {
-    fn get_pre_processor(&self) -> Box<dyn PreProcessor<RustCodeGenContext>> {
-        Box::new(RustPreProcessor {})
+impl CodeGenProvider<RustContext> for RustProvider {
+    fn get_pre_processor(&self) -> Box<dyn PreProcessor<RustContext>> {
+        Box::new(RustPreProcessor {
+            options: self.options.clone(),
+        })
     }
 
-    fn get_package_writer(&self) -> Option<Box<dyn PackageWriter<RustCodeGenContext>>> {
+    fn get_package_writer(&self) -> Option<Box<dyn PackageWriter<RustContext>>> {
         Some(Box::new(RustPackageWriter {}))
     }
 
-    fn get_type_writer(&self) -> Box<dyn CustomTypeWriter<RustCodeGenContext>> {
+    fn get_type_writer(&self) -> Box<dyn CustomTypeWriter<RustContext>> {
         Box::new(RustTypeWriter {})
-    }
-}
-
-impl CodeGenContext for RustCodeGenContext {
-    fn type_dict(&self) -> &HashMap<String, TypeInfo> {
-        &self.type_dict
-    }
-}
-
-impl RustCodeGenContext {
-    fn get_opt_cyclic_group_id(&self, type_info: &TypeInfo) -> Option<u32> {
-        self.extra_type_infos
-            .get(&get_type_name(&type_info.type_def))
-            .and_then(|i| i.cyclic_ref_group_id)
-    }
-
-    pub fn is_cyclic_ref(&self, type_info: &TypeInfo, ref_type_info: &TypeInfo) -> bool {
-        let gid1 = self.get_opt_cyclic_group_id(type_info);
-        let gid2 = self.get_opt_cyclic_group_id(ref_type_info);
-        gid1 != None && gid1 == gid2
-    }
-}
-
-impl RustCodeGenConfig {
-    pub fn new() -> Self {
-        Self {}
     }
 }

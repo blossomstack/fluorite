@@ -5,32 +5,29 @@ use std::{
 
 use crate::code_gen::abi::{PackageWriter, TypeInfo};
 
-use super::RustCodeGenContext;
+use super::RustContext;
 
 pub struct RustPackageWriter {}
 
-impl PackageWriter<RustCodeGenContext> for RustPackageWriter {
+impl PackageWriter<RustContext> for RustPackageWriter {
     fn write_package(
         &self,
         package: &str,
         types: &Vec<&TypeInfo>,
-        _context: &RustCodeGenContext,
+        context: &RustContext,
     ) -> anyhow::Result<()> {
-        let output_path = format!("/tmp/test_gen/{}/", package);
+        let output_path = format!("{}/{}/", context.options.output_dir, package);
         create_dir_all(output_path.as_str())?;
         let package_file = format!("{}/mod.rs", output_path);
         let file = File::create(package_file)?;
         let mut writer = BufWriter::new(file);
         for type_info in types {
-            writer.write_all(format!("mod {};\n", type_info.type_name()).as_bytes())?;
-            writer.write_all(
-                format!(
-                    "pub use crate::{}::{}::*;\n",
-                    package,
-                    type_info.type_name()
-                )
-                .as_bytes(),
-            )?;
+            let mod_name = context
+                .options
+                .type_to_file_name(type_info.type_name().as_str());
+            writer.write_all(format!("mod {};\n", mod_name).as_bytes())?;
+            writer
+                .write_all(format!("pub use crate::{}::{}::*;\n", package, mod_name).as_bytes())?;
         }
         Ok(())
     }

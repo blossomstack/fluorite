@@ -2,14 +2,14 @@ use std::collections::HashMap;
 
 use crate::definitions::{CustomType, Definition};
 
-use super::abi::{CodeGenConfig, CodeGenContext, TypeInfo};
+use super::abi::{CodeGenContext, CodeGenProvider, TypeInfo};
 
 pub struct CodeGenerator<C: CodeGenContext> {
-    config: Box<dyn CodeGenConfig<C>>,
+    config: Box<dyn CodeGenProvider<C>>,
 }
 
 impl<C: CodeGenContext> CodeGenerator<C> {
-    pub fn new(config: Box<dyn CodeGenConfig<C>>) -> Self {
+    pub fn new(config: Box<dyn CodeGenProvider<C>>) -> Self {
         Self { config }
     }
 

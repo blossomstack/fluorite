@@ -4,11 +4,12 @@ use crate::definitions::{CustomType, Definition, Field};
 
 use super::utils::get_type_name;
 
-pub trait CodeGenConfig<C: CodeGenContext> {
+pub trait CodeGenProvider<C: CodeGenContext> {
     fn get_pre_processor(&self) -> Box<dyn PreProcessor<C>>;
     fn get_package_writer(&self) -> Option<Box<dyn PackageWriter<C>>>;
     fn get_type_writer(&self) -> Box<dyn CustomTypeWriter<C>>;
 }
+
 pub struct TypeInfo {
     pub type_def: CustomType,
     pub package: String,

@@ -10,12 +10,14 @@ use crate::{
     definitions::{CustomType, Definition},
 };
 
-use super::{type_graph::TypeGraph, ExtraTypeInfo, RustCodeGenContext};
+use super::{type_graph::TypeGraph, ExtraTypeInfo, RustContext, RustOptions};
 
-pub struct RustPreProcessor {}
+pub struct RustPreProcessor {
+    pub options: RustOptions,
+}
 
-impl PreProcessor<RustCodeGenContext> for RustPreProcessor {
-    fn process(&self, definitions: &Vec<Definition>) -> anyhow::Result<Box<RustCodeGenContext>> {
+impl PreProcessor<RustContext> for RustPreProcessor {
+    fn process(&self, definitions: &Vec<Definition>) -> anyhow::Result<Box<RustContext>> {
         // Detect the cyclic referenced types
         let mut all_types: Vec<TypeInfo> = Vec::new();
         for d in definitions {
@@ -48,9 +50,10 @@ impl PreProcessor<RustCodeGenContext> for RustPreProcessor {
             .into_iter()
             .map(|t| (get_type_name(&t.type_def), t))
             .collect();
-        let context = RustCodeGenContext {
+        let context = RustContext {
             extra_type_infos,
             type_dict,
+            options: self.options.clone(),
         };
         Ok(Box::new(context))
     }

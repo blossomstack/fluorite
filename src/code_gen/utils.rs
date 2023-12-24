@@ -31,3 +31,17 @@ pub fn get_type_name(t: &CustomType) -> String {
         CustomType::Enum { name, values: _ } => name.to_string(),
     }
 }
+
+pub fn to_snake_case(s: &str) -> String {
+    let mut snake_case = String::new();
+    let mut chars = s.chars().peekable();
+
+    while let Some(c) = chars.next() {
+        if c.is_uppercase() && !snake_case.is_empty() && chars.peek().is_some() {
+            snake_case.push('_');
+        }
+        snake_case.extend(c.to_lowercase());
+    }
+
+    snake_case
+}

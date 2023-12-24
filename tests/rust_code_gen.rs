@@ -1,7 +1,10 @@
 use std::fs;
 
 use fluorite::{
-    code_gen::{rust::RustCodeGenConfig, CodeGenerator},
+    code_gen::{
+        rust::{RustOptions, RustProvider},
+        CodeGenerator,
+    },
     definitions::Definition,
 };
 
@@ -15,7 +18,9 @@ pub(crate) fn deserialize_definition_file(file_path: &str) -> anyhow::Result<Def
 fn test_rust_code_gen() -> anyhow::Result<()> {
     let d1 = deserialize_definition_file("examples/users.yml")?;
     let d2 = deserialize_definition_file("examples/orders.yml")?;
-    let config = RustCodeGenConfig::new();
+    let output_dir = "/tmp/test1";
+    let options = RustOptions::new(output_dir.to_owned());
+    let config = RustProvider::new(options);
 
     let generator = CodeGenerator::new(Box::new(config));
     generator.generate(&vec![d1, d2])?;
