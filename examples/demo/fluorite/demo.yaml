@@ -1,0 +1,23 @@
+---
+rust_package: "demo"
+types:
+  - name: User
+    type: Object
+    fields:
+      - name: first_name
+        type: String
+      - name: last_name
+        type: String
+      - name: age
+        type: UInt32
+      - name: gender
+        type: Gender
+      - name: active
+        type: Bool
+  
+  - name: Gender
+    type: Enum
+    values:
+      - Male
+      - Female
+

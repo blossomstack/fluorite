@@ -42,10 +42,7 @@ impl CustomTypeWriter<RustContext> for RustTypeWriter {
         type_info: &TypeInfo,
         _context: &RustContext,
     ) -> anyhow::Result<()> {
-        if type_info.is_enum() {
-            return Ok(());
-        }
-        writer.write_all("use serde::{Serializer, Deserializer};".as_bytes())?;
+        writer.write_all("use serde::{Serialize, Deserialize};".as_bytes())?;
         writer.write_all("\n\n".as_bytes())?;
         Ok(())
     }
@@ -56,7 +53,7 @@ impl CustomTypeWriter<RustContext> for RustTypeWriter {
         type_info: &TypeInfo,
         _context: &RustContext,
     ) -> anyhow::Result<()> {
-        writer.write_all("#[derive(Debug, Clone, Serializer, Deserializer)]\n".as_bytes())?;
+        writer.write_all("#[derive(Debug, Clone, Serialize, Deserialize)]\n".as_bytes())?;
         writer.write_all(format!("pub struct {} {{\n", type_info.type_name()).as_bytes())?;
         Ok(())
     }
@@ -69,7 +66,7 @@ impl CustomTypeWriter<RustContext> for RustTypeWriter {
         context: &RustContext,
     ) -> anyhow::Result<()> {
         let type_to_write = match &field.field_type {
-            FieldType::Simple(t) => t.to_string(),
+            FieldType::Simple(t) => context.options.get_simple_type(t),
             FieldType::Custom { name } => {
                 // check if the field type and current type is in same cyclic ref group
                 let ref_type = context
@@ -104,7 +101,7 @@ impl CustomTypeWriter<RustContext> for RustTypeWriter {
         type_info: &TypeInfo,
         _context: &RustContext,
     ) -> anyhow::Result<()> {
-        writer.write_all("#[derive(Debug, Clone, Serializer, Deserializer)]\n".as_bytes())?;
+        writer.write_all("#[derive(Debug, Clone, Serialize, Deserialize)]\n".as_bytes())?;
         writer.write_all(format!("pub enum {} {{\n", type_info.type_name()).as_bytes())?;
         Ok(())
     }
