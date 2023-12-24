@@ -1,0 +1,23 @@
+---
+rust_package: "protocols"
+types:
+  - name: Order 
+    type: Object
+    fields:
+      - name: id
+        type: UInt64
+      - name: item
+        type: String
+      - name: create_time
+        type: DateTime
+      - name: user
+        type: User
+      - name: shipping
+        type: Shipping
+  - name: Shipping
+    type: Object
+    fields:
+      - name: id
+        type: String
+      - name: order
+        type: Order
