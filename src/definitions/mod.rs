@@ -9,7 +9,7 @@ use serde::{
 };
 use serde_yaml::Value;
 
-#[derive(Debug, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, PartialEq, Clone, Serialize, Deserialize)]
 pub struct Definition {
     #[serde(rename = "types")]
     pub custom_types: Vec<CustomType>,
@@ -18,7 +18,7 @@ pub struct Definition {
     pub configs: HashMap<String, Value>,
 }
 
-#[derive(Debug, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub enum SimpleType {
     String,
     Bool,
@@ -53,21 +53,21 @@ impl Display for SimpleType {
     }
 }
 
-#[derive(Debug, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(tag = "type")]
 pub enum CustomType {
     Object { name: String, fields: Vec<Field> },
     Enum { name: String, values: Vec<String> },
 }
 
-#[derive(Debug, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct Field {
     pub name: String,
     #[serde(rename = "type")]
     pub field_type: FieldType,
 }
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, Clone, PartialEq)]
 pub enum FieldType {
     Simple(SimpleType),
     Custom { name: String },

@@ -1,12 +1,9 @@
-use std::fs;
-
 use clap::Parser;
 
-use crate::{definitions::Definition, utils::deserialize_definition_file};
+use crate::utils::deserialize_definition_file;
 
 mod definitions;
 mod utils;
-use fluorite;
 
 #[derive(Debug, Parser)]
 #[clap(author, version, about, long_about = None)]
