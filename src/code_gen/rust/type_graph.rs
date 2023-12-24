@@ -1,9 +1,6 @@
 use std::collections::HashMap;
 
-use crate::code_gen::{
-    abi::TypeInfo,
-    utils::{get_ref_types, get_type_name},
-};
+use crate::code_gen::abi::TypeInfo;
 
 use anyhow::anyhow;
 
@@ -41,18 +38,17 @@ pub(crate) struct TraverseResult {
 }
 
 impl<'g> TypeGraph<'g> {
-    pub(crate) fn new(all_types: &'g Vec<TypeInfo>) -> anyhow::Result<Self> {
+    pub(crate) fn new(all_types: &'g HashMap<String, TypeInfo>) -> anyhow::Result<Self> {
         let mut type_nodes: HashMap<String, TypeNode> = HashMap::new();
-        for t in all_types.iter() {
-            let name = get_type_name(&t.type_def);
-            if type_nodes.contains_key(&name) {
-                return Err(anyhow!("Duplicate type name: {}", &name));
+        for (type_name, type_info) in all_types.iter() {
+            if type_nodes.contains_key(type_name) {
+                return Err(anyhow!("Duplicate type name: {}", &type_name));
             }
             let node = TypeNode {
-                type_info: t,
+                type_info,
                 node_info: NodeInfo::empty(),
             };
-            type_nodes.insert(name, node);
+            type_nodes.insert(type_name.clone(), node);
         }
 
         Ok(Self {
@@ -64,12 +60,11 @@ impl<'g> TypeGraph<'g> {
 
     pub(crate) fn group_cyclic_referenced_types(
         mut self,
-        all_types: &Vec<TypeInfo>,
     ) -> anyhow::Result<Vec<Vec<&'g TypeInfo>>> {
         // traverse the graph to find all cyclic referenced groups of type nodes.
         let mut index = 1;
-        for typ in all_types {
-            let name = get_type_name(&typ.type_def);
+        let cloned_type_names = self.type_nodes.keys().cloned().collect::<Vec<_>>();
+        for name in cloned_type_names {
             // skip if type node has been traversed
             if self
                 .get_node_info(&name, |n| n.node_info.index == 0)?
@@ -115,8 +110,12 @@ impl<'g> TypeGraph<'g> {
         let mut low_link = index;
         let mut index = index;
         let ref_type_names: Vec<String> = self
-            .get_node_info(curr_type_name, |n| get_ref_types(&n.type_info.type_def))?
+            .get_node_info(curr_type_name, |n| n.type_info.get_referrenced_types())?
             .ok_or_else(|| anyhow!("cannot find type: {}", curr_type_name))?;
+        println!(
+            "find ref types for {}: {:?}",
+            curr_type_name, ref_type_names
+        );
         for ref_type_name in ref_type_names {
             let opt_node_info = self.get_node_info(&ref_type_name, |n| n.node_info.clone())?;
             match opt_node_info {

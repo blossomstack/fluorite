@@ -35,4 +35,16 @@ impl CodeGenProvider<RustContext> for RustProvider {
     fn get_type_writer(&self) -> Box<dyn CustomTypeWriter<RustContext>> {
         Box::new(RustTypeWriter {})
     }
+
+    fn get_object_writer(&self) -> Box<dyn super::abi::ObjectWriter<RustContext>> {
+        Box::new(RustTypeWriter {})
+    }
+
+    fn get_enum_writer(&self) -> Box<dyn super::abi::EnumWriter<RustContext>> {
+        Box::new(RustTypeWriter {})
+    }
+
+    fn get_object_enum_writer(&self) -> Box<dyn super::abi::ObjectEnumWriter<RustContext>> {
+        Box::new(RustTypeWriter {})
+    }
 }

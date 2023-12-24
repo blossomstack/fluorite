@@ -1,5 +1,3 @@
-use std::collections::HashMap;
-
 use fluorite::definitions::*;
 
 #[test]
@@ -7,6 +5,7 @@ fn can_serialize_and_deserialize() -> anyhow::Result<()> {
     let field = Field {
         name: "name".to_string(),
         field_type: "String".to_string(),
+        config: None,
     };
     let fields = vec![field];
     let user_type = CustomType::Object {
@@ -14,8 +13,8 @@ fn can_serialize_and_deserialize() -> anyhow::Result<()> {
         fields,
     };
     let definition = Definition {
-        custom_types: vec![user_type],
-        configs: HashMap::new(),
+        types: vec![user_type],
+        configs: None,
     };
 
     let serialized = serde_yaml::to_string(&definition)?;

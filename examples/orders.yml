@@ -1,5 +1,6 @@
 ---
-rust_package: "protocols"
+configs:
+  rust_package: "protocols"
 types:
   - name: Order 
     type: Object
@@ -18,6 +19,29 @@ types:
     type: Object
     fields:
       - name: id
+        type: String
+      - name: order
+        type: Order
+      - name: address
+        type: Address
+  - name: Address
+    type: ObjectEnum
+    type_tag: type
+    values:
+      - Empty
+      - PostCode
+      - AddressInfo
+  - name: AddressInfo
+    type: Object
+    fields:
+      - name: first_line
+        type: String
+      - name: second_line
+        type: String
+  - name: PostCode
+    type: Object
+    fields:
+      - name: code
         type: String
       - name: order
         type: Order

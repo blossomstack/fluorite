@@ -1,0 +1,68 @@
+---
+types:
+  - name: Definition
+    type: Object 
+    fields:
+      - name: types
+        type: List<CustomType>
+      - name: configs
+        type: DefinitionConfig
+
+  - name: CustomType
+    type: ObjectEnum
+    type_tag: type
+    values:
+      - Object
+      - Enum
+
+  - name: Object
+    type: Object
+    fields:
+      - name: name 
+        type: String
+      - name: fields
+        type: List<Field>
+
+  - name: Enum
+    type: Object
+    fields:
+      - name: name
+        type: String
+      - name: values
+        type: List<String>
+
+  - name: Field
+    type: Object
+    fields:
+      - name: name
+        type: String
+      - name: type
+        type: String
+        rename: field_type
+      - name: configs
+        type: FieldConfig
+
+  - name: SimpleType
+    type: Enum
+    values:
+      - String
+      - Bool
+      - DateTime
+      - UInt32
+      - UInt64
+      - Int32
+      - Int64
+      - Float32
+      - Float64
+
+  - name: DefinitionConfig
+    type: Object
+    fields:
+      - name: rust_package
+        type: String
+
+  - name: FieldConfig
+    type: Object
+      - name: rename
+        type: String
+

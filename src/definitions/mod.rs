@@ -1,21 +1,15 @@
-use std::{
-    collections::HashMap,
-    fmt::{self, Display},
-};
-
-use serde::{
-    de::{self, Visitor},
-    Deserialize, Deserializer, Serialize, Serializer,
-};
-use serde_yaml::Value;
+use serde::{Deserialize, Serialize};
 
 #[derive(Debug, PartialEq, Clone, Serialize, Deserialize)]
 pub struct Definition {
-    #[serde(rename = "types")]
-    pub custom_types: Vec<CustomType>,
+    pub types: Vec<CustomType>,
 
-    #[serde(flatten)]
-    pub configs: HashMap<String, Value>,
+    pub configs: Option<DefinitionConfig>,
+}
+
+#[derive(Debug, PartialEq, Clone, Serialize, Deserialize)]
+pub struct DefinitionConfig {
+    pub rust_package: String,
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -50,8 +44,19 @@ impl SimpleType {
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(tag = "type")]
 pub enum CustomType {
-    Object { name: String, fields: Vec<Field> },
-    Enum { name: String, values: Vec<String> },
+    Object {
+        name: String,
+        fields: Vec<Field>,
+    },
+    Enum {
+        name: String,
+        values: Vec<String>,
+    },
+    ObjectEnum {
+        name: String,
+        type_tag: String,
+        values: Vec<String>,
+    },
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -59,4 +64,10 @@ pub struct Field {
     pub name: String,
     #[serde(rename = "type")]
     pub field_type: String,
+    pub config: Option<FieldConfig>,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct FieldConfig {
+    rename: String,
 }

@@ -1,5 +1,6 @@
 ---
-rust_package: "demo"
+configs:
+  rust_package: "demo"
 types:
   - name: User
     type: Object
