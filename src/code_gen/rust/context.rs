@@ -1,4 +1,8 @@
-use std::collections::HashMap;
+use std::{
+    collections::HashMap,
+    fs::File,
+    io::{BufWriter, Write},
+};
 
 use crate::code_gen::abi::{CodeGenContext, TypeInfo, TypeName};
 
@@ -13,6 +17,19 @@ pub struct RustContext {
 impl CodeGenContext for RustContext {
     fn type_dict(&self) -> &HashMap<String, TypeInfo> {
         &self.types_dict
+    }
+
+    fn get_writer_for_type(&self, type_info: &TypeInfo) -> anyhow::Result<Box<dyn Write>> {
+        let type_name = type_info.type_name();
+        let output_path = format!("{}/{}", self.options.output_dir, type_info.package());
+        let output_file_name = format!(
+            "{}/{}.rs",
+            output_path,
+            self.options.type_to_file_name(type_name)
+        );
+        let file = File::create(output_file_name)?;
+        let writer = BufWriter::new(file);
+        Ok(Box::new(writer))
     }
 }
 

@@ -9,7 +9,7 @@ pub use options::*;
 mod context;
 pub use context::*;
 
-use super::abi::{CodeGenProvider, CustomTypeWriter, PackageWriter, PreProcessor};
+use super::abi::{CodeGenProvider, PackageWriter, PreProcessor};
 
 pub struct RustProvider {
     options: RustOptions,
@@ -29,10 +29,6 @@ impl CodeGenProvider<RustContext> for RustProvider {
 
     fn get_package_writer(&self) -> Option<Box<dyn PackageWriter<RustContext>>> {
         Some(Box::new(RustPackageWriter {}))
-    }
-
-    fn get_type_writer(&self) -> Box<dyn CustomTypeWriter<RustContext>> {
-        Box::new(RustTypeWriter {})
     }
 
     fn get_object_writer(&self) -> Box<dyn super::abi::ObjectWriter<RustContext>> {

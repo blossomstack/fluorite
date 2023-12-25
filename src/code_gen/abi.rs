@@ -8,7 +8,6 @@ pub use type_info::*;
 pub trait CodeGenProvider<C: CodeGenContext> {
     fn get_pre_processor(&self) -> Box<dyn PreProcessor<C>>;
     fn get_package_writer(&self) -> Option<Box<dyn PackageWriter<C>>>;
-    fn get_type_writer(&self) -> Box<dyn CustomTypeWriter<C>>;
     fn get_object_writer(&self) -> Box<dyn ObjectWriter<C>>;
     fn get_enum_writer(&self) -> Box<dyn EnumWriter<C>>;
     fn get_object_enum_writer(&self) -> Box<dyn ObjectEnumWriter<C>>;
@@ -18,6 +17,7 @@ pub trait CodeGenProvider<C: CodeGenContext> {
 
 pub trait CodeGenContext {
     fn type_dict(&self) -> &HashMap<String, TypeInfo>;
+    fn get_writer_for_type(&self, type_info: &TypeInfo) -> anyhow::Result<Box<dyn Write>>;
 }
 
 pub trait PreProcessor<C: CodeGenContext> {
@@ -54,22 +54,7 @@ pub trait ListWriter<C: CodeGenContext> {
 }
 
 pub trait ObjectEnumWriter<C: CodeGenContext> {
-    fn pre_write_object_enum(
-        &self,
-        writer: &mut dyn Write,
-        type_info: &ObjectEnumTypeInfo,
-        context: &C,
-    ) -> anyhow::Result<()>;
-
-    fn write_object_enum_value(
-        &self,
-        writer: &mut dyn Write,
-        value: &ObjectEnumValue,
-        type_info: &ObjectEnumTypeInfo,
-        context: &C,
-    ) -> anyhow::Result<()>;
-
-    fn post_write_object_enum(
+    fn write_object_enum(
         &self,
         writer: &mut dyn Write,
         type_info: &ObjectEnumTypeInfo,
@@ -78,63 +63,18 @@ pub trait ObjectEnumWriter<C: CodeGenContext> {
 }
 
 pub trait EnumWriter<C: CodeGenContext> {
-    fn pre_write_enum(
+    fn write_enum(
         &self,
         writer: &mut dyn Write,
         type_info: &EnumTypeInfo,
-        context: &C,
-    ) -> anyhow::Result<()>;
-
-    fn write_enum_value(
-        &self,
-        writer: &mut dyn Write,
-        value: &str,
-        type_info: &EnumTypeInfo,
-        context: &C,
-    ) -> anyhow::Result<()>;
-
-    fn post_write_enum(
-        &self,
-        writer: &mut dyn Write,
-        type_info: &EnumTypeInfo,
-        context: &C,
-    ) -> anyhow::Result<()>;
-}
-
-pub trait CustomTypeWriter<C: CodeGenContext> {
-    fn get_writer_for_type(
-        &self,
-        type_info: &TypeInfo,
-        context: &C,
-    ) -> anyhow::Result<Box<dyn Write>>;
-
-    fn pre_write_type(
-        &self,
-        writer: &mut Box<dyn Write>,
-        type_info: &TypeInfo,
         context: &C,
     ) -> anyhow::Result<()>;
 }
 
 pub trait ObjectWriter<C: CodeGenContext> {
-    fn pre_write_object(
-        &self,
-        writer: &mut Box<dyn Write>,
-        type_info: &ObjectTypeInfo,
-        context: &C,
-    ) -> anyhow::Result<()>;
-
-    fn write_field(
+    fn write_object(
         &self,
         writer: &mut dyn Write,
-        field: &ObjectField,
-        type_info: &ObjectTypeInfo,
-        context: &C,
-    ) -> anyhow::Result<()>;
-
-    fn post_write_object(
-        &self,
-        writer: &mut Box<dyn Write>,
         type_info: &ObjectTypeInfo,
         context: &C,
     ) -> anyhow::Result<()>;
