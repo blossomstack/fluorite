@@ -26,7 +26,6 @@ impl ObjectWriter<RustContext> for RustTypeWriter {
             self.write_object_field(writer, field, type_info, context)?;
         }
         writer.write_all("}\n".as_bytes())?;
-
         Ok(())
     }
 }

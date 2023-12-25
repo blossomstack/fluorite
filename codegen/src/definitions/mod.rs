@@ -74,7 +74,7 @@ pub struct Field {
     #[serde(rename = "type")]
     pub field_type: String,
     pub optional: Option<bool>,
-    pub config: Option<FieldConfig>,
+    pub configs: Option<FieldConfig>,
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]

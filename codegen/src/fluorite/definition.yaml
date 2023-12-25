@@ -1,12 +1,18 @@
 ---
+configs:
+  rust_package: definitions
 types:
   - name: Definition
     type: Object 
     fields:
       - name: types
-        type: List<CustomType>
+        type: CustomTypeList
       - name: configs
         type: DefinitionConfig
+
+  - name: CustomTypeList
+    type: List
+    item_type: CustomType
 
   - name: CustomType
     type: ObjectEnum
@@ -21,7 +27,11 @@ types:
       - name: name 
         type: String
       - name: fields
-        type: List<Field>
+        type: FieldList
+
+  - name: FieldList
+    type: List
+    item_type: Field
 
   - name: Enum
     type: Object
@@ -29,7 +39,11 @@ types:
       - name: name
         type: String
       - name: values
-        type: List<String>
+        type: EnumValueList
+
+  - name: EnumValueList
+    type: List
+    item_type: String
 
   - name: Field
     type: Object
@@ -38,9 +52,14 @@ types:
         type: String
       - name: type
         type: String
-        rename: field_type
+        configs:
+          rename: field_type
+      - name: optional
+        type: Bool
+        optional: true
       - name: configs
         type: FieldConfig
+        optional: true
 
   - name: SimpleType
     type: Enum
@@ -63,14 +82,15 @@ types:
 
   - name: FieldConfig
     type: Object
+    fields:
       - name: rename
         type: String
         optional: true
-      - name: rust_decorator
-        type: RustTypeDecorator
+      - name: rust_type_wrapper
+        type: RustTypeWrapper
         optional: true
 
-  - name: RustTypeDecorator
+  - name: RustTypeWrapper
     type: Enum
     values:
       - Box

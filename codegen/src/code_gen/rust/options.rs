@@ -3,11 +3,17 @@ use crate::code_gen::utils::to_snake_case;
 #[derive(Debug, Clone)]
 pub struct RustOptions {
     pub output_dir: String,
+    pub single_file: bool
 }
 
 impl RustOptions {
     pub fn new(output_dir: String) -> Self {
-        Self { output_dir }
+        Self { output_dir , single_file: true}
+    }
+
+    pub fn with_single_file(&mut self, single_file:bool) -> &mut RustOptions{
+        self.single_file = single_file;
+        self
     }
 
     pub fn type_to_file_name(&self, type_name: &str) -> String {

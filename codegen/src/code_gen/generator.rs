@@ -70,6 +70,7 @@ impl<C: CodeGenContext> CodeGenerator<C> {
                 map_writer.write_map(&mut writer, map_type_info, context)?;
             }
         };
+        writer.flush()?;
         Ok(())
     }
 }
