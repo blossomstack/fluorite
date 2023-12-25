@@ -10,10 +10,6 @@ pub struct RustContext {
     pub options: RustOptions,
 }
 
-pub struct ExtraTypeInfo {
-    pub cyclic_ref_group_id: Option<u32>,
-}
-
 impl CodeGenContext for RustContext {
     fn type_dict(&self) -> &HashMap<String, TypeInfo> {
         &self.types_dict

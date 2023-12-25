@@ -25,10 +25,6 @@ pub enum SimpleType {
     Float64,
 }
 
-pub enum CollectionType {
-    List,
-}
-
 impl SimpleType {
     pub fn all_values() -> Vec<SimpleType> {
         vec![

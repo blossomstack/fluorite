@@ -8,8 +8,8 @@ use crate::{
     definitions::Definition,
 };
 
-pub fn compile(sources: &[&str], output: &str) -> anyhow::Result<()> {
-    let definitions = sources
+pub fn compile(inputs: &[&str], output: &str) -> anyhow::Result<()> {
+    let definitions = inputs
         .iter()
         .map(|s| deserialize_definition_file(s))
         .collect::<anyhow::Result<Vec<Definition>>>()?;

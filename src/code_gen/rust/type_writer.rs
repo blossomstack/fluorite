@@ -217,7 +217,7 @@ impl MapWriter<RustContext> for RustTypeWriter {
         writer.write_all("use std::collections::HashMap;\n\n".as_bytes())?;
         writer.write_all(
             format!(
-                "pub type {} = HashMap<{}, {}>\n",
+                "pub type {} = HashMap<{}, {}>;\n",
                 type_info.name, key_type, value_type
             )
             .as_bytes(),
@@ -234,7 +234,7 @@ impl ListWriter<RustContext> for RustTypeWriter {
     ) -> anyhow::Result<()> {
         let item_type = context.get_fully_qualified_type_name(&type_info.item_type)?;
         writer
-            .write_all(format!("pub type {} = Vec<{}>\n", type_info.name, item_type).as_bytes())?;
+            .write_all(format!("pub type {} = Vec<{}>;\n", type_info.name, item_type).as_bytes())?;
         Ok(())
     }
 }
