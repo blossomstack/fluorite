@@ -136,6 +136,10 @@ impl RustTypeWriter {
         context: &RustContext,
     ) -> anyhow::Result<()> {
         let type_to_write = context.get_fully_qualified_type_name(&field.field_type)?;
+        let type_to_write = match field.is_optional() {
+            true => format!("Option<{}>", type_to_write),
+            _ => type_to_write,
+        };
         let type_to_write = match &field
             .config
             .as_ref()

@@ -73,16 +73,17 @@ pub struct Field {
     pub name: String,
     #[serde(rename = "type")]
     pub field_type: String,
+    pub optional: Option<bool>,
     pub config: Option<FieldConfig>,
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct FieldConfig {
     pub rename: Option<String>,
-    pub rust_type_wrapper: Option<RustTypeDecorator>,
+    pub rust_type_wrapper: Option<RustTypeWrapper>,
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
-pub enum RustTypeDecorator {
+pub enum RustTypeWrapper {
     Box,
 }

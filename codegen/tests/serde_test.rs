@@ -5,6 +5,7 @@ fn can_serialize_and_deserialize() -> anyhow::Result<()> {
     let field = Field {
         name: "name".to_string(),
         field_type: "String".to_string(),
+        optional: Some(true),
         config: None,
     };
     let fields = vec![field];

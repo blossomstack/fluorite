@@ -65,8 +65,10 @@ types:
     type: Object
       - name: rename
         type: String
+        optional: true
       - name: rust_decorator
         type: RustTypeDecorator
+        optional: true
 
   - name: RustTypeDecorator
     type: Enum

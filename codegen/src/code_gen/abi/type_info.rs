@@ -74,6 +74,7 @@ pub struct ObjectField {
     pub name: String,
     pub field_type: TypeName,
     pub config: Option<FieldConfig>,
+    pub optional: Option<bool>,
 }
 
 impl From<&Field> for ObjectField {
@@ -82,7 +83,14 @@ impl From<&Field> for ObjectField {
             name: f.name.clone(),
             field_type: TypeName::from_str(f.field_type.as_str()),
             config: f.config.clone(),
+            optional: f.optional
         }
+    }
+}
+
+impl ObjectField {
+    pub fn is_optional(&self) -> bool {
+        matches!(&self.optional, Some(true))
     }
 }
 

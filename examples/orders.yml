@@ -29,6 +29,7 @@ types:
         type: User
       - name: shipping
         type: Shipping
+        optional: true
         config:
           rust_type_wrapper: Box
       - name: type
