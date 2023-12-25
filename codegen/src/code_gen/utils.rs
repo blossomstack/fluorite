@@ -14,6 +14,21 @@ impl Display for SimpleType {
     }
 }
 
+impl SimpleType {
+    pub fn all_values() -> Vec<SimpleType> {
+        vec![
+            SimpleType::String,
+            SimpleType::Bool,
+            SimpleType::DateTime,
+            SimpleType::UInt32,
+            SimpleType::UInt64,
+            SimpleType::Int32,
+            SimpleType::Int64,
+            SimpleType::Float32,
+            SimpleType::Float64,
+        ]
+    }
+}
 impl CustomType {
     pub(crate) fn type_name(&self) -> &str {
         match self {

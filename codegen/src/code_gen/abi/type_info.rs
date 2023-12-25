@@ -83,7 +83,7 @@ impl From<&Field> for ObjectField {
             name: f.name.clone(),
             field_type: TypeName::from_str(f.field_type.as_str()),
             config: f.configs.clone(),
-            optional: f.optional
+            optional: f.optional,
         }
     }
 }

@@ -23,8 +23,8 @@ impl PreProcessor<RustContext> for RustPreProcessor {
     }
 
     fn get_package_name(&self, definition: &Definition) -> anyhow::Result<String> {
-        match definition.configs.as_ref().map(|c| c.rust_package.clone()) {
-            Some(package) => Ok(package),
+        match definition.configs.rust_package.as_ref() {
+            Some(package) => Ok(package.clone()),
             _ => Err(anyhow!("cannot find package info from definition")),
         }
     }

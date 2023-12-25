@@ -59,7 +59,9 @@ impl ObjectEnumWriter<RustContext> for RustTypeWriter {
     ) -> anyhow::Result<()> {
         self.pre_write_type(writer)?;
         writer.write_all("#[derive(Debug, Clone, Serialize, Deserialize)]\n".as_bytes())?;
-        writer.write_all(format!("#[serde(tag = \"{}\")]\n", object_enum_type_info.type_tag).as_bytes())?;
+        writer.write_all(
+            format!("#[serde(tag = \"{}\")]\n", object_enum_type_info.type_tag).as_bytes(),
+        )?;
         writer.write_all(format!("pub enum {} {{\n", object_enum_type_info.name).as_bytes())?;
         for value in object_enum_type_info.values.iter() {
             match value {

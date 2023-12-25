@@ -20,6 +20,37 @@ types:
     values:
       - Object
       - Enum
+      - ObjectEnum
+      - List
+      - Map
+
+  - name: ObjectEnum
+    type: Object
+    fields:
+      - name: name
+        type: String
+      - name: type_tag
+        type: String
+      - name: values
+        type: EnumValueList
+
+  - name: List
+    type: Object
+    fields:
+      - name: name
+        type: String
+      - name: item_type
+        type: String
+
+  - name: Map
+    type: Object
+    fields:
+      - name: name
+        type: String
+      - name: key_type
+        type: String
+      - name: value_type
+        type: String
 
   - name: Object
     type: Object
@@ -79,6 +110,7 @@ types:
     fields:
       - name: rust_package
         type: String
+        optional: true
 
   - name: FieldConfig
     type: Object
