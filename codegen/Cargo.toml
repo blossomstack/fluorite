@@ -1,5 +1,5 @@
 [package]
-name = "demo"
+name = "fluorite"
 documentation = "https://docs.rs/fluorite"
 readme = "../README.md"
 version.workspace = true
@@ -11,8 +11,16 @@ description.workspace = true
 repository.workspace = true
 exclude.workspace = true
 
-[dependencies]
-serde = {version = "1.0.193", features =["serde_derive"]}
+[lib]
+name = "fluorite"
+path = "src/lib.rs"
 
-[build-dependencies]
-fluorite =  {path = "../../codegen"}
+[[bin]]
+name = "fluorite"
+
+[dependencies]
+anyhow = "1.0.76"
+clap = { version = "4.4.1", features = ["derive"] }
+serde = {version = "1.0.193", features =["serde_derive"]}
+serde_yaml = "0.9.29"
+

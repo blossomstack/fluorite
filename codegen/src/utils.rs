@@ -33,7 +33,7 @@ mod test {
 
     #[test]
     fn test_deserialize_definition_file() -> anyhow::Result<()> {
-        deserialize_definition_file("examples/users.yml")?;
+        deserialize_definition_file("../examples/users.yml")?;
         Ok(())
     }
 }

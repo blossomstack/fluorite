@@ -1,19 +1,16 @@
-[package]
-name = "fluorite"
+[workspace]
+members = [
+    "codegen",
+    "examples/demo"
+]
+
+[workspace.package]
 version = "0.1.0"
 edition = "2021"
-
-# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
-
-[lib]
-name = "fluorite"
-
-[[bin]]
-name = "fluorite"
-
-[dependencies]
-anyhow = "1.0.76"
-clap = { version = "4.4.1", features = ["derive"] }
-serde = {version = "1.0.193", features =["serde_derive"]}
-serde_yaml = "0.9.29"
+license = "MIT OR Apache-2.0"
+keywords = ["IDL", "schema", "codegen"]
+authors = ["shawn <zxgshawn@gmail.com>"]
+description = "Generate rust/typescript codes from schemas specified by Yaml/JSON."
+repository = "https://github.com/blossomstack/fluorite"
+exclude = [".*"]
 

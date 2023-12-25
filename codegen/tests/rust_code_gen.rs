@@ -16,8 +16,8 @@ pub(crate) fn deserialize_definition_file(file_path: &str) -> anyhow::Result<Def
 
 #[test]
 fn test_rust_code_gen() -> anyhow::Result<()> {
-    let d1 = deserialize_definition_file("examples/users.yml")?;
-    let d2 = deserialize_definition_file("examples/orders.yml")?;
+    let d1 = deserialize_definition_file("../examples/users.yml")?;
+    let d2 = deserialize_definition_file("../examples/orders.yml")?;
     let output_dir = "/tmp/test1";
     let options = RustOptions::new(output_dir.to_owned());
     let config = RustProvider::new(options);
