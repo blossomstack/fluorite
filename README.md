@@ -48,6 +48,7 @@ Options:
 - [ ] Language Support
   - [x] Rust codegen used in Cargo `build.rs` script
   - [ ] Typescript codegen
+  - [ ] [CodeGen API](./codegen/src/code_gen/abi.rs) to add more language supports to `fluorite`
 - [ ] Support for JSON schema definition (no plan)
 
 ## Schema Definition Features
