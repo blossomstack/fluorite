@@ -1,11 +1,31 @@
 use core::fmt;
 use std::fmt::Display;
 
-use crate::definitions::SimpleType;
+use crate::definitions::{CustomType, SimpleType};
 
 impl Display for SimpleType {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "{:?}", &self)
+    }
+}
+
+impl CustomType {
+    pub(crate) fn type_name(&self) -> &str {
+        match self {
+            CustomType::Object { name, fields: _ } => name.as_str(),
+            CustomType::Enum { name, values: _ } => name.as_str(),
+            CustomType::ObjectEnum {
+                name,
+                type_tag: _,
+                values: _,
+            } => name.as_str(),
+            CustomType::List { name, item_type: _ } => name.as_str(),
+            CustomType::Map {
+                name,
+                key_type: _,
+                value_type: _,
+            } => name.as_str(),
+        }
     }
 }
 

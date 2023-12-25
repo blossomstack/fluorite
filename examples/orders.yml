@@ -2,6 +2,22 @@
 configs:
   rust_package: "protocols"
 types:
+  - name: UserOrders
+    type: Object
+    fields:
+      - name: user
+        type: User
+      - name: orders
+        type: OrderList
+
+  - name: OrderList
+    type: List 
+    item_type: Order
+  - name: OrderMap
+    type: Map
+    key_type: String
+    value_type: Order
+
   - name: Order 
     type: Object
     fields:
@@ -15,6 +31,13 @@ types:
         type: User
       - name: shipping
         type: Shipping
+        config:
+          rust_type_wrapper: Box
+      - name: type
+        type: String
+        config:
+          rename: order_type
+
   - name: Shipping
     type: Object
     fields:

@@ -1,11 +1,11 @@
 use std::collections::HashMap;
 
-use crate::code_gen::abi::{CodeGenContext, TypeInfo};
+use crate::code_gen::abi::{CodeGenContext, TypeInfo, TypeName};
 
 use super::RustOptions;
+use anyhow::anyhow;
 
 pub struct RustContext {
-    pub extra_type_infos: HashMap<String, ExtraTypeInfo>,
     pub types_dict: HashMap<String, TypeInfo>,
     pub options: RustOptions,
 }
@@ -21,15 +21,17 @@ impl CodeGenContext for RustContext {
 }
 
 impl RustContext {
-    fn get_opt_cyclic_group_id(&self, type_name: &str) -> Option<u32> {
-        self.extra_type_infos
-            .get(type_name)
-            .and_then(|i| i.cyclic_ref_group_id)
-    }
-
-    pub fn is_cyclic_ref(&self, type_name: &str, ref_type_name: &str) -> bool {
-        let gid1 = self.get_opt_cyclic_group_id(type_name);
-        let gid2 = self.get_opt_cyclic_group_id(ref_type_name);
-        gid1 != None && gid1 == gid2
+    pub fn get_fully_qualified_type_name(&self, type_name: &TypeName) -> anyhow::Result<String> {
+        let full_type_name = match type_name {
+            TypeName::Simple(t) => self.options.get_simple_type(t),
+            TypeName::CustomType(name) => {
+                let type_info = self
+                    .types_dict
+                    .get(name)
+                    .ok_or_else(|| anyhow!("Cannot find custom type: {}", name))?;
+                format!("crate::{}::{}", type_info.package(), type_info.type_name())
+            }
+        };
+        Ok(full_type_name)
     }
 }

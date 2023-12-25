@@ -25,6 +25,10 @@ pub enum SimpleType {
     Float64,
 }
 
+pub enum CollectionType {
+    List,
+}
+
 impl SimpleType {
     pub fn all_values() -> Vec<SimpleType> {
         vec![
@@ -57,6 +61,15 @@ pub enum CustomType {
         type_tag: String,
         values: Vec<String>,
     },
+    List {
+        name: String,
+        item_type: String,
+    },
+    Map {
+        name: String,
+        key_type: String,
+        value_type: String,
+    },
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -69,5 +82,11 @@ pub struct Field {
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct FieldConfig {
-    rename: String,
+    pub rename: Option<String>,
+    pub rust_type_wrapper: Option<RustTypeDecorator>,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub enum RustTypeDecorator {
+    Box,
 }

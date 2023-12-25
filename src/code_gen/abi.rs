@@ -1,46 +1,9 @@
 use std::{collections::HashMap, io::Write};
 
-use crate::definitions::{Definition, SimpleType};
+use crate::definitions::Definition;
 
 mod type_info;
 pub use type_info::*;
-
-#[derive(Debug, Clone, PartialEq)]
-pub(crate) enum FieldType {
-    // unrecognized fields when deserializing the field
-    UnknownFields,
-    Simple(SimpleType),
-    Custom { name: String },
-}
-
-const UNKNOWN_FIELDS_TYPE_NAME: &'static str = "UnknownFields";
-
-impl FieldType {
-    pub fn is_custom_type(&self) -> bool {
-        match self {
-            FieldType::UnknownFields => false,
-            FieldType::Simple(_) => false,
-            FieldType::Custom { name: _ } => true,
-        }
-    }
-
-    pub fn get_field_type(field_type: &str) -> FieldType {
-        let opt_simple_type = SimpleType::all_values()
-            .into_iter()
-            .find(|t| t.to_string() == field_type);
-        match opt_simple_type {
-            Some(t) => FieldType::Simple(t),
-            None if field_type == UNKNOWN_FIELDS_TYPE_NAME => FieldType::UnknownFields,
-            None => FieldType::Custom {
-                name: field_type.to_owned(),
-            },
-        }
-    }
-
-    fn is_unknown_field(&self) -> bool {
-        matches!(self, FieldType::UnknownFields)
-    }
-}
 
 pub trait CodeGenProvider<C: CodeGenContext> {
     fn get_pre_processor(&self) -> Box<dyn PreProcessor<C>>;
@@ -49,6 +12,8 @@ pub trait CodeGenProvider<C: CodeGenContext> {
     fn get_object_writer(&self) -> Box<dyn ObjectWriter<C>>;
     fn get_enum_writer(&self) -> Box<dyn EnumWriter<C>>;
     fn get_object_enum_writer(&self) -> Box<dyn ObjectEnumWriter<C>>;
+    fn get_list_writer(&self) -> Box<dyn ListWriter<C>>;
+    fn get_map_writer(&self) -> Box<dyn MapWriter<C>>;
 }
 
 pub trait CodeGenContext {
@@ -66,6 +31,24 @@ pub trait PackageWriter<C: CodeGenContext> {
         &self,
         package: &str,
         types: &Vec<&TypeInfo>,
+        context: &C,
+    ) -> anyhow::Result<()>;
+}
+
+pub trait MapWriter<C: CodeGenContext> {
+    fn write_map(
+        &self,
+        writer: &mut dyn Write,
+        type_info: &MapTypeInfo,
+        context: &C,
+    ) -> anyhow::Result<()>;
+}
+
+pub trait ListWriter<C: CodeGenContext> {
+    fn write_list(
+        &self,
+        writer: &mut dyn Write,
+        type_info: &ListTypeInfo,
         context: &C,
     ) -> anyhow::Result<()>;
 }

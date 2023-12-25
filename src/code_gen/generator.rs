@@ -3,8 +3,8 @@ use std::collections::HashMap;
 use crate::definitions::{CustomType, Definition};
 
 use super::abi::{
-    CodeGenContext, CodeGenProvider, EnumTypeInfo, ObjectEnumTypeInfo, ObjectEnumValue,
-    ObjectField, ObjectTypeInfo, PreProcessor, TypeInfo,
+    CodeGenContext, CodeGenProvider, EnumTypeInfo, ListTypeInfo, MapTypeInfo, ObjectEnumTypeInfo,
+    ObjectEnumValue, ObjectField, ObjectTypeInfo, PreProcessor, TypeInfo, TypeName,
 };
 
 pub struct CodeGenerator<C: CodeGenContext> {
@@ -29,7 +29,7 @@ impl<C: CodeGenContext> CodeGenerator<C> {
         }
         for (package, types) in packages {
             if let Some(package_writer) = self.config.get_package_writer() {
-                package_writer.write_package(&package, &types, &context)?;
+                package_writer.write_package(package, &types, &context)?;
             }
             for type_info in types.into_iter().filter(|t| !t.is_object_enum_value()) {
                 self.gen_code_for(type_info, &context)?;
@@ -48,18 +48,10 @@ impl<C: CodeGenContext> CodeGenerator<C> {
         let mut all_type_names = Vec::new();
         for d in definitions {
             for t in &d.types {
-                match t {
-                    CustomType::Object { name, fields: _ } => all_type_names.push(name.clone()),
-                    CustomType::Enum { name, values: _ } => all_type_names.push(name.clone()),
-                    CustomType::ObjectEnum {
-                        name,
-                        type_tag: _,
-                        values,
-                    } => {
-                        all_type_names.push(name.clone());
-                        for v in values {
-                            object_enum_value_type_names.push(v.clone());
-                        }
+                all_type_names.push(t.type_name().to_owned());
+                if let CustomType::ObjectEnum { values, .. } = t {
+                    for v in values {
+                        object_enum_value_type_names.push(v.clone());
                     }
                 }
             }
@@ -72,7 +64,7 @@ impl<C: CodeGenContext> CodeGenerator<C> {
             for t in &d.types {
                 match t {
                     CustomType::Object { name, fields } => {
-                        let fields = fields.iter().map(|f| ObjectField::from(f)).collect();
+                        let fields = fields.iter().map(ObjectField::from).collect();
                         let is_object_enum_value = object_enum_value_type_names.contains(name);
                         let type_info = ObjectTypeInfo {
                             package: package.clone(),
@@ -98,7 +90,7 @@ impl<C: CodeGenContext> CodeGenerator<C> {
                         let values = values
                             .iter()
                             .map(|v| match all_type_names.contains(v) {
-                                true => ObjectEnumValue::ObjectType(v.clone()),
+                                true => ObjectEnumValue::CustomType(v.clone()),
                                 false => ObjectEnumValue::Simple(v.clone()),
                             })
                             .collect();
@@ -109,6 +101,27 @@ impl<C: CodeGenContext> CodeGenerator<C> {
                             values,
                         };
                         all_types.insert(name.clone(), TypeInfo::ObjectEnum(type_info));
+                    }
+                    CustomType::List { name, item_type } => {
+                        let type_info = ListTypeInfo {
+                            package: package.clone(),
+                            name: name.clone(),
+                            item_type: TypeName::from_str(item_type),
+                        };
+                        all_types.insert(name.clone(), TypeInfo::List(type_info));
+                    }
+                    CustomType::Map {
+                        name,
+                        key_type,
+                        value_type,
+                    } => {
+                        let type_info = MapTypeInfo {
+                            package: package.clone(),
+                            name: name.clone(),
+                            key_type: TypeName::from_str(key_type),
+                            value_type: TypeName::from_str(value_type),
+                        };
+                        all_types.insert(name.clone(), TypeInfo::Map(type_info));
                     }
                 }
             }
@@ -165,6 +178,18 @@ impl<C: CodeGenContext> CodeGenerator<C> {
                     object_enum_type_info,
                     context,
                 )?;
+            }
+            TypeInfo::List(list_type_info) => {
+                // write type
+                type_writer.pre_write_type(&mut writer, type_info, context)?;
+                let list_writer = self.config.get_list_writer();
+                list_writer.write_list(&mut writer, list_type_info, context)?;
+            }
+            TypeInfo::Map(map_type_info) => {
+                // write type
+                type_writer.pre_write_type(&mut writer, type_info, context)?;
+                let map_writer = self.config.get_map_writer();
+                map_writer.write_map(&mut writer, map_type_info, context)?;
             }
         };
         Ok(())

@@ -1,5 +1,4 @@
 mod pre_processor;
-mod type_graph;
 pub use pre_processor::*;
 mod package_writer;
 pub use package_writer::*;
@@ -45,6 +44,14 @@ impl CodeGenProvider<RustContext> for RustProvider {
     }
 
     fn get_object_enum_writer(&self) -> Box<dyn super::abi::ObjectEnumWriter<RustContext>> {
+        Box::new(RustTypeWriter {})
+    }
+
+    fn get_list_writer(&self) -> Box<dyn super::abi::ListWriter<RustContext>> {
+        Box::new(RustTypeWriter {})
+    }
+
+    fn get_map_writer(&self) -> Box<dyn super::abi::MapWriter<RustContext>> {
         Box::new(RustTypeWriter {})
     }
 }

@@ -65,4 +65,11 @@ types:
     type: Object
       - name: rename
         type: String
+      - name: rust_decorator
+        type: RustTypeDecorator
+
+  - name: RustTypeDecorator
+    type: Enum
+    values:
+      - Box
 

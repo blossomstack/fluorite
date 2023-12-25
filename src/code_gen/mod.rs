@@ -1,7 +1,7 @@
 pub mod abi;
-mod code_gen;
+mod generator;
 pub mod rust;
 pub mod ts;
 
 pub(crate) mod utils;
-pub use code_gen::*;
+pub use generator::*;
