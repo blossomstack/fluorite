@@ -29,7 +29,7 @@ impl RustOptions {
             crate::definitions::SimpleType::Bool => "bool".to_string(),
             crate::definitions::SimpleType::DateTime => "DateTime".to_string(),
             crate::definitions::SimpleType::UInt32 => "u32".to_string(),
-            crate::definitions::SimpleType::UInt64 => "u16".to_string(),
+            crate::definitions::SimpleType::UInt64 => "u64".to_string(),
             crate::definitions::SimpleType::Int32 => "i32".to_string(),
             crate::definitions::SimpleType::Int64 => "i64".to_string(),
             crate::definitions::SimpleType::Float32 => "f32".to_string(),
