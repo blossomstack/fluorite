@@ -24,4 +24,4 @@ anyhow = "1.0.76"
 clap = { version = "4.4.1", features = ["derive"] }
 serde = {version = "1.0.193", features =["serde_derive"]}
 serde_yaml = "0.9.29"
-fluorite = {path = "../runtime/"}
+fluorite = {path = "../runtime/", version="0.1"}

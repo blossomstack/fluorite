@@ -1,6 +1,4 @@
-use std::{
-    io::{Write},
-};
+use std::io::Write;
 
 use crate::code_gen::abi::{PackageWriter, TypeInfo};
 
