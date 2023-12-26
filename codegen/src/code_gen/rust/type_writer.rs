@@ -18,14 +18,16 @@ impl ObjectWriter<RustContext> for RustTypeWriter {
         type_info: &ObjectTypeInfo,
         context: &RustContext,
     ) -> anyhow::Result<()> {
-        self.pre_write_type(writer)?;
-        writer.write_all("#[derive(Debug, Clone, Serialize, Deserialize)]\n".as_bytes())?;
+        writer.write_all(
+            "#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]\n".as_bytes(),
+        )?;
         writer.write_all(format!("pub struct {} {{\n", type_info.name).as_bytes())?;
         // write fields
         for field in type_info.fields.iter() {
             self.write_object_field(writer, field, type_info, context)?;
         }
         writer.write_all("}\n".as_bytes())?;
+        writer.write_all("\n".as_bytes())?;
         Ok(())
     }
 }
@@ -37,15 +39,16 @@ impl EnumWriter<RustContext> for RustTypeWriter {
         enum_type_info: &EnumTypeInfo,
         _context: &RustContext,
     ) -> anyhow::Result<()> {
-        self.pre_write_type(writer)?;
-        writer.write_all("#[derive(Debug, Clone, Serialize, Deserialize)]\n".as_bytes())?;
+        writer.write_all(
+            "#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]\n".as_bytes(),
+        )?;
         writer.write_all(format!("pub enum {} {{\n", enum_type_info.name).as_bytes())?;
         // write values
         for value in enum_type_info.values.iter() {
             writer.write_all(format!("  {},\n", value).as_bytes())?;
         }
-        writer.write_all("}".as_bytes())?;
-
+        writer.write_all("}\n".as_bytes())?;
+        writer.write_all("\n".as_bytes())?;
         Ok(())
     }
 }
@@ -57,8 +60,9 @@ impl ObjectEnumWriter<RustContext> for RustTypeWriter {
         object_enum_type_info: &ObjectEnumTypeInfo,
         context: &RustContext,
     ) -> anyhow::Result<()> {
-        self.pre_write_type(writer)?;
-        writer.write_all("#[derive(Debug, Clone, Serialize, Deserialize)]\n".as_bytes())?;
+        writer.write_all(
+            "#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]\n".as_bytes(),
+        )?;
         writer.write_all(
             format!("#[serde(tag = \"{}\")]\n", object_enum_type_info.type_tag).as_bytes(),
         )?;
@@ -88,7 +92,7 @@ impl ObjectEnumWriter<RustContext> for RustTypeWriter {
             }
         }
         writer.write_all("}".as_bytes())?;
-
+        writer.write_all("\n".as_bytes())?;
         Ok(())
     }
 }
@@ -111,6 +115,7 @@ impl MapWriter<RustContext> for RustTypeWriter {
             )
             .as_bytes(),
         )?;
+        writer.write_all("\n".as_bytes())?;
         Ok(())
     }
 }
@@ -124,6 +129,7 @@ impl ListWriter<RustContext> for RustTypeWriter {
         let item_type = context.get_fully_qualified_type_name(&type_info.item_type)?;
         writer
             .write_all(format!("pub type {} = Vec<{}>;\n", type_info.name, item_type).as_bytes())?;
+        writer.write_all("\n".as_bytes())?;
         Ok(())
     }
 }
@@ -176,12 +182,6 @@ impl RustTypeWriter {
                 }
             }
         }
-        Ok(())
-    }
-
-    fn pre_write_type(&self, writer: &mut dyn Write) -> anyhow::Result<()> {
-        writer.write_all("use serde::{Serialize, Deserialize};".as_bytes())?;
-        writer.write_all("\n\n".as_bytes())?;
         Ok(())
     }
 }

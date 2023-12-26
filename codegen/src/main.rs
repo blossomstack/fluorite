@@ -1,4 +1,5 @@
-use clap::{Parser, ValueEnum};
+use clap::ValueEnum;
+use clap::{Parser, Subcommand};
 use code_gen::{
     rust::{RustOptions, RustProvider},
     CodeGenerator,
@@ -13,32 +14,46 @@ mod utils;
 #[derive(Debug, Parser)]
 #[clap(author, version, about, long_about = None)]
 struct Args {
-    /// Input definition files
-    #[clap(short, long)]
-    pub inputs: Vec<String>,
-    /// Output directory
-    #[clap(short, long)]
-    pub output: String,
-    /// Target language
-    #[clap(short, long, value_enum, default_value_t=Language::Rust)]
-    pub target: Language,
+    /// Sub commands for different target languages
+    #[clap(subcommand)]
+    pub command: Command,
 }
 
-#[derive(ValueEnum, Copy, Clone, Debug, PartialEq, Eq)]
-enum Language {
-    Rust,
+#[derive(Debug, Subcommand)]
+enum Command {
+    Rust {
+        /// Input definition files
+        #[clap(short, long)]
+        inputs: Vec<String>,
+        /// Output directory
+        #[clap(short, long)]
+        output: String,
+
+        /// Output codes to a single mod file for each package
+        #[clap(short, long, default_value_t = true)]
+        single_file: bool,
+    },
 }
 fn main() -> anyhow::Result<()> {
     let args = Args::parse();
-    let definitions = args
-        .inputs
-        .iter()
-        .map(|f| deserialize_definition_file(f))
-        .collect::<anyhow::Result<Vec<_>>>()?;
-    let options = RustOptions::new(args.output.to_owned());
-    let config = RustProvider::new(options);
+    match args.command {
+        Command::Rust {
+            inputs,
+            output,
+            single_file,
+        } => {
+            let definitions = inputs
+                .iter()
+                .map(|f| deserialize_definition_file(f))
+                .collect::<anyhow::Result<Vec<_>>>()?;
 
-    let generator = CodeGenerator::new(Box::new(config));
-    generator.generate(&definitions)?;
+            let mut options = RustOptions::new(output.to_owned());
+            options.with_single_file(single_file);
+            let config = RustProvider::new(options);
+
+            let generator = CodeGenerator::new(Box::new(config));
+            generator.generate(&definitions)?;
+        }
+    }
     Ok(())
 }

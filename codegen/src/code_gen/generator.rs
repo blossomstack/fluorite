@@ -50,7 +50,6 @@ impl<C: CodeGenContext> CodeGenerator<C> {
             }
             TypeInfo::Enum(enum_type_info) => {
                 let enum_writer = self.config.get_enum_writer();
-
                 enum_writer.write_enum(&mut writer, enum_type_info, context)?;
             }
             TypeInfo::ObjectEnum(object_enum_type_info) => {
