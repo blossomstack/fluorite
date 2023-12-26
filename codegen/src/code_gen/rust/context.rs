@@ -28,6 +28,9 @@ impl CodeGenContext for RustContext {
 }
 
 impl RustContext {
+    pub fn type_descriptions(&self) -> &str {
+        "#[derive(Debug, Clone, PartialEq, serde::Serialize, serde::Deserialize)]"
+    }
     pub fn write_to_type_file(&self, type_info: &TypeInfo) -> anyhow::Result<Box<dyn Write>> {
         let type_name = type_info.type_name();
         let output_path = format!("{}/{}", self.options.output_dir, type_info.package());

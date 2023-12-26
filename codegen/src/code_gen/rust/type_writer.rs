@@ -18,9 +18,7 @@ impl ObjectWriter<RustContext> for RustTypeWriter {
         type_info: &ObjectTypeInfo,
         context: &RustContext,
     ) -> anyhow::Result<()> {
-        writer.write_all(
-            "#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]\n".as_bytes(),
-        )?;
+        writer.write_all(format!("{}\n", context.type_descriptions()).as_bytes())?;
         writer.write_all(format!("pub struct {} {{\n", type_info.name).as_bytes())?;
         // write fields
         for field in type_info.fields.iter() {
@@ -37,11 +35,9 @@ impl EnumWriter<RustContext> for RustTypeWriter {
         &self,
         writer: &mut dyn Write,
         enum_type_info: &EnumTypeInfo,
-        _context: &RustContext,
+        context: &RustContext,
     ) -> anyhow::Result<()> {
-        writer.write_all(
-            "#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]\n".as_bytes(),
-        )?;
+        writer.write_all(format!("{}\n", context.type_descriptions()).as_bytes())?;
         writer.write_all(format!("pub enum {} {{\n", enum_type_info.name).as_bytes())?;
         // write values
         for value in enum_type_info.values.iter() {
@@ -60,9 +56,7 @@ impl ObjectEnumWriter<RustContext> for RustTypeWriter {
         object_enum_type_info: &ObjectEnumTypeInfo,
         context: &RustContext,
     ) -> anyhow::Result<()> {
-        writer.write_all(
-            "#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]\n".as_bytes(),
-        )?;
+        writer.write_all(format!("{}\n", context.type_descriptions()).as_bytes())?;
         writer.write_all(
             format!("#[serde(tag = \"{}\")]\n", object_enum_type_info.type_tag).as_bytes(),
         )?;
