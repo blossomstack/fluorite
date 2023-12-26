@@ -13,6 +13,7 @@ exclude.workspace = true
 
 [dependencies]
 serde = {version = "1.0.193", features =["serde_derive"]}
+fluorite = {path = "../../runtime/"}
 
 [build-dependencies]
 fluorite_codegen =  {path = "../../codegen"}

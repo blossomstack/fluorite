@@ -9,6 +9,7 @@ fn main() {
         gender: Gender::Male,
         age: 10,
         active: true,
+        info: None,
     };
     println!("user: {:?}", user);
 }

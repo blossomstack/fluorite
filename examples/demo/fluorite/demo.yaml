@@ -15,6 +15,9 @@ types:
         type: Gender
       - name: active
         type: Bool
+      - name: info
+        type: Any
+        optional: true
   
   - name: Gender
     type: Enum

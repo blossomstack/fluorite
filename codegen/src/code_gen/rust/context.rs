@@ -73,7 +73,7 @@ impl RustContext {
                     .join("::");
                 format!("crate::{}::{}", package, type_info.type_name())
             }
-            TypeName::Any => "flourite::Any".to_owned(),
+            TypeName::Any => "fluorite::Any".to_owned(),
         };
         Ok(full_type_name)
     }
