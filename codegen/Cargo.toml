@@ -16,7 +16,7 @@ name = "fluorite_codegen"
 path = "src/lib.rs"
 
 [[bin]]
-name = "fluorite_codegen"
+name = "fluorite"
 path="src/main.rs"
 
 [dependencies]
