@@ -1,5 +1,5 @@
 use core::fmt;
-use std::{collections::HashMap, fmt::Display};
+use std::{collections::HashMap, fmt::Display, str::FromStr};
 
 use crate::definitions::{CustomType, Definition, SimpleType};
 
@@ -28,7 +28,14 @@ impl SimpleType {
             SimpleType::Float64,
         ]
     }
+
+    pub fn from(s: &str) -> Option<SimpleType> {
+        SimpleType::all_values()
+            .into_iter()
+            .find(|t| t.to_string() == s)
+    }
 }
+
 impl CustomType {
     pub(crate) fn type_name(&self) -> &str {
         match self {

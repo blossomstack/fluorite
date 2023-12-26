@@ -1,4 +1,3 @@
-use clap::ValueEnum;
 use clap::{Parser, Subcommand};
 use code_gen::{
     rust::{RustOptions, RustProvider},

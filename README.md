@@ -13,9 +13,10 @@ Add following dependencies first:
 ```toml
 [dependencies]
 serde = "<serde-version>"
+fluorite = "0.1"
 
 [build-dependencies]
-fluorite = "0.1"
+fluorite_codegen = "0.1"
 ```
 Using `fluorite` in the `build.rs` to generate codes during the Cargo build process:
 ```rust
@@ -69,5 +70,6 @@ More details can be found in [definitions.rs](codegen/src/definitions/mod.rs).
   - UIntX
   - IntX
   - Float
-- Optional fields
+- Optional fields support
+- Any type fields support
 

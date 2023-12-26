@@ -4,5 +4,5 @@ fn main() {
     // options.compile(&["fluorite/demo.yaml"], out_dir.as_str())
     // fluorite::complile_with_options(options)?
     // or to use default options:
-    fluorite::compile(&["fluorite/demo.yaml"], out_dir.as_str()).unwrap();
+    fluorite_codegen::compile(&["fluorite/demo.yaml"], out_dir.as_str()).unwrap();
 }

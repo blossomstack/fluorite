@@ -1,6 +1,6 @@
 ---
 configs:
-  rust_package: "protocols"
+  rust_package: "protocols.users"
 types:
   - name: User
     type: Object

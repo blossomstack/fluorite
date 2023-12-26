@@ -1,5 +1,5 @@
 [package]
-name = "fluorite_codegen"
+name = "fluorite"
 documentation = "https://docs.rs/fluorite"
 readme = "../README.md"
 version.workspace = true
@@ -11,17 +11,16 @@ description.workspace = true
 repository.workspace = true
 exclude.workspace = true
 
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 [lib]
-name = "fluorite_codegen"
-path = "src/lib.rs"
-
-[[bin]]
-name = "fluorite_codegen"
-path="src/main.rs"
+name="fluorite"
+path="src/lib.rs"
 
 [dependencies]
-anyhow = "1.0.76"
-clap = { version = "4.4.1", features = ["derive"] }
 serde = {version = "1.0.193", features =["serde_derive"]}
-serde_yaml = "0.9.29"
-fluorite = {path = "../runtime/"}
+
+[dev-dependencies]
+anyhow = "1.0.76"
+serde_json = "1.0.108"
+
+

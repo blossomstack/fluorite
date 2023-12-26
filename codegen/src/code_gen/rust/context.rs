@@ -66,8 +66,14 @@ impl RustContext {
                     .types_dict
                     .get(name)
                     .ok_or_else(|| anyhow!("Cannot find custom type: {}", name))?;
-                format!("crate::{}::{}", type_info.package(), type_info.type_name())
+                let package = type_info
+                    .package()
+                    .split('.')
+                    .collect::<Vec<_>>()
+                    .join("::");
+                format!("crate::{}::{}", package, type_info.type_name())
             }
+            TypeName::Any => "flourite::Any".to_owned(),
         };
         Ok(full_type_name)
     }

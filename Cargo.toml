@@ -1,6 +1,7 @@
 [workspace]
 members = [
     "codegen",
+    "runtime",
     "examples/demo"
 ]
 

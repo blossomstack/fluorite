@@ -1,6 +1,5 @@
 use std::{
-    fs::{create_dir_all, File},
-    io::{BufWriter, Write},
+    io::{Write},
 };
 
 use crate::code_gen::abi::{PackageWriter, TypeInfo};

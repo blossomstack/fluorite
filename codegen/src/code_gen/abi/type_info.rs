@@ -9,6 +9,7 @@ pub enum TypeInfo {
 }
 
 pub enum TypeName {
+    Any,
     Simple(SimpleType),
     CustomType(String),
 }
@@ -18,6 +19,7 @@ impl TypeName {
         match self {
             TypeName::Simple(_) => false,
             TypeName::CustomType(_) => true,
+            TypeName::Any => false,
         }
     }
 
@@ -27,6 +29,7 @@ impl TypeName {
             .find(|t| t.to_string() == field_type);
         match opt_simple_type {
             Some(t) => TypeName::Simple(t),
+            None if field_type == "Any" => TypeName::Any,
             None => TypeName::CustomType(field_type.to_owned()),
         }
     }
@@ -120,6 +123,7 @@ impl TypeInfo {
             TypeInfo::List(l) => match &l.item_type {
                 TypeName::Simple(_) => vec![],
                 TypeName::CustomType(name) => vec![name.to_owned()],
+                TypeName::Any => vec![],
             },
             TypeInfo::Map(m) => Self::get_custom_types(vec![&m.key_type, &m.value_type]),
         }

@@ -1,6 +1,6 @@
 ---
 configs:
-  rust_package: "protocols"
+  rust_package: "protocols.orders"
 types:
   - name: UserOrders
     type: Object
@@ -67,3 +67,5 @@ types:
         type: String
       - name: order
         type: Order
+      - name: instruction
+        type: Any
