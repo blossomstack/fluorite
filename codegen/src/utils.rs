@@ -8,6 +8,18 @@ use crate::{
     definitions::Definition,
 };
 
+pub fn compile_with_options(options: RustOptions, inputs: &[&str]) -> anyhow::Result<()> {
+    let definitions = inputs
+        .iter()
+        .map(|s| deserialize_definition_file(s))
+        .collect::<anyhow::Result<Vec<Definition>>>()?;
+    let config = RustProvider::new(options);
+
+    let generator = CodeGenerator::new(Box::new(config));
+    generator.generate(&definitions)?;
+    Ok(())
+}
+
 pub fn compile(inputs: &[&str], output: &str) -> anyhow::Result<()> {
     let definitions = inputs
         .iter()

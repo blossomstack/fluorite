@@ -46,8 +46,7 @@ fn main() -> anyhow::Result<()> {
                 .map(|f| deserialize_definition_file(f))
                 .collect::<anyhow::Result<Vec<_>>>()?;
 
-            let mut options = RustOptions::new(output.to_owned());
-            options.with_single_file(single_file);
+            let options = RustOptions::new(output.to_owned()).with_single_file(single_file);
             let config = RustProvider::new(options);
 
             let generator = CodeGenerator::new(Box::new(config));

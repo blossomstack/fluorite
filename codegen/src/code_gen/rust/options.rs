@@ -4,6 +4,7 @@ use crate::code_gen::utils::to_snake_case;
 pub struct RustOptions {
     pub output_dir: String,
     pub single_file: bool,
+    pub any_type: String,
 }
 
 impl RustOptions {
@@ -11,11 +12,17 @@ impl RustOptions {
         Self {
             output_dir,
             single_file: true,
+            any_type: "fluorite::Any".to_owned(),
         }
     }
 
-    pub fn with_single_file(&mut self, single_file: bool) -> &mut RustOptions {
+    pub fn with_single_file(mut self, single_file: bool) -> RustOptions {
         self.single_file = single_file;
+        self
+    }
+
+    pub fn with_any_type(mut self, any_type: &str) -> Self {
+        self.any_type = any_type.to_owned();
         self
     }
 

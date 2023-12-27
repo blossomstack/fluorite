@@ -76,7 +76,7 @@ impl RustContext {
                     .join("::");
                 format!("crate::{}::{}", package, type_info.type_name())
             }
-            TypeName::Any => "fluorite::Any".to_owned(),
+            TypeName::Any => self.options.any_type.clone(),
         };
         Ok(full_type_name)
     }
