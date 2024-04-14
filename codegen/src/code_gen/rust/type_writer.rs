@@ -79,7 +79,7 @@ impl ObjectEnumWriter<RustContext> for RustTypeWriter {
                     match context.type_dict().get(type_name) {
                         Some(t) => {
                             writer.write_all(
-                                format!("  {}({})\n", t.type_name(), context.get_fqn_for_type(t))
+                                format!("  {}({}),\n", t.type_name(), context.get_fqn_for_type(t))
                                     .as_bytes(),
                             )?;
                         }

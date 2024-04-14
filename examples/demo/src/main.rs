@@ -2,6 +2,8 @@ mod demo {
     include!(concat!(env!("OUT_DIR"), "/demo/mod.rs"));
 }
 use demo::{Gender, User};
+
+use crate::demo::{AnObject, TestObjectEnum};
 fn main() {
     let first_name = "f".to_string();
     let last_name = "l".to_string();
@@ -20,4 +22,7 @@ fn main() {
         info,
     };
     println!("user: {:?}", user);
+
+    let o = TestObjectEnum::AnObject(AnObject::new("test".to_owned()));
+    println!("object enum: {:?}", o);
 }
