@@ -25,3 +25,17 @@ types:
       - Male
       - Female
 
+  - name: TestObjectEnum
+    type: ObjectEnum
+    type_tag: type
+    values:
+      - PlainString
+      - AnObject
+    configs:
+      object_enum_style: Extern 
+
+  - name: AnObject
+    type: Object
+    fields:
+      - name: field_a
+        type: String

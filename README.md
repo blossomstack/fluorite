@@ -14,6 +14,7 @@ Add following dependencies first:
 [dependencies]
 serde = "<serde-version>"
 fluorite = "0.1"
+derive-new = "0.6"
 
 [build-dependencies]
 fluorite_codegen = "0.1"

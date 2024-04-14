@@ -1,4 +1,4 @@
-use crate::definitions::{Field, FieldConfig, SimpleType};
+use crate::definitions::{Field, FieldConfig, SimpleType, TypeConfig};
 
 pub enum TypeInfo {
     Object(ObjectTypeInfo),
@@ -53,6 +53,7 @@ pub struct ObjectEnumTypeInfo {
     pub name: String,
     pub type_tag: String,
     pub values: Vec<ObjectEnumValue>,
+    pub configs: Option<TypeConfig>,
 }
 
 pub enum ObjectEnumValue {

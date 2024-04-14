@@ -20,7 +20,7 @@ fn can_serialize_and_deserialize() -> anyhow::Result<()> {
 
     let serialized = serde_yaml::to_string(&definition)?;
     println!("serialized: {}", serialized);
-    let _deserialized = serde_yaml::from_str(serialized.as_str())?;
+    serde_yaml::from_str(serialized.as_str())?;
     // assert_eq!(definition, deserialized);
     Ok(())
 }

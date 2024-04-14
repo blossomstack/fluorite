@@ -33,6 +33,9 @@ types:
         type: String
       - name: values
         type: EnumValueList
+      - name: configs
+        type: TypeConfig
+        optional: true
 
   - name: List
     type: Object
@@ -112,6 +115,13 @@ types:
         type: String
         optional: true
 
+  - name: TypeConfig
+    type: Object
+    fields:
+      - name: object_enum_style
+        type: ObjectEnumStyle
+        optional: true
+
   - name: FieldConfig
     type: Object
     fields:
@@ -121,6 +131,12 @@ types:
       - name: rust_type_wrapper
         type: RustTypeWrapper
         optional: true
+
+  - name: ObjectEnumStyle
+    type: Enum
+    values:
+      - Inline
+      - Extern
 
   - name: RustTypeWrapper
     type: Enum

@@ -1,7 +1,10 @@
-use crate::code_gen::abi::{
-    CodeGenContext, EnumTypeInfo, EnumWriter, ListTypeInfo, ListWriter, MapTypeInfo, MapWriter,
-    ObjectEnumTypeInfo, ObjectEnumValue, ObjectEnumWriter, ObjectField, ObjectTypeInfo,
-    ObjectWriter, TypeInfo,
+use crate::{
+    code_gen::abi::{
+        CodeGenContext, EnumTypeInfo, EnumWriter, ListTypeInfo, ListWriter, MapTypeInfo, MapWriter,
+        ObjectEnumTypeInfo, ObjectEnumValue, ObjectEnumWriter, ObjectField, ObjectTypeInfo,
+        ObjectWriter, TypeInfo,
+    },
+    definitions::ObjectEnumStyle,
 };
 
 use super::RustContext;
@@ -56,15 +59,37 @@ impl ObjectEnumWriter<RustContext> for RustTypeWriter {
         object_enum_type_info: &ObjectEnumTypeInfo,
         context: &RustContext,
     ) -> anyhow::Result<()> {
+        let enum_style = object_enum_type_info
+            .configs
+            .clone()
+            .and_then(|c| c.object_enum_style)
+            .unwrap_or(ObjectEnumStyle::Inline);
         writer.write_all(format!("{}\n", context.type_descriptions()).as_bytes())?;
         writer.write_all(
             format!("#[serde(tag = \"{}\")]\n", object_enum_type_info.type_tag).as_bytes(),
         )?;
         writer.write_all(format!("pub enum {} {{\n", object_enum_type_info.name).as_bytes())?;
+
         for value in object_enum_type_info.values.iter() {
             match value {
                 ObjectEnumValue::Simple(simple) => {
                     writer.write_all(format!("  {},\n", simple).as_bytes())?;
+                }
+                ObjectEnumValue::CustomType(type_name) if enum_style == ObjectEnumStyle::Extern => {
+                    match context.type_dict().get(type_name) {
+                        Some(t) => {
+                            writer.write_all(
+                                format!("  {}({})\n", t.type_name(), context.get_fqn_for_type(t))
+                                    .as_bytes(),
+                            )?;
+                        }
+                        _ => {
+                            return Err(anyhow!(
+                                "Enum cannot be nested within enum object: {}",
+                                type_name
+                            ));
+                        }
+                    }
                 }
                 ObjectEnumValue::CustomType(type_name) => {
                     match context.type_dict().get(type_name) {

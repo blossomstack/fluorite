@@ -1,7 +1,7 @@
 use core::fmt;
 use std::{collections::HashMap, fmt::Display, str::FromStr};
 
-use crate::definitions::{CustomType, Definition, SimpleType};
+use crate::definitions::{CustomType, Definition, ObjectEnumStyle::Extern, SimpleType};
 
 use super::abi::{
     CodeGenContext, EnumTypeInfo, ListTypeInfo, MapTypeInfo, ObjectEnumTypeInfo, ObjectEnumValue,
@@ -45,6 +45,7 @@ impl CustomType {
                 name,
                 type_tag: _,
                 values: _,
+                configs: _,
             } => name.as_str(),
             CustomType::List { name, item_type: _ } => name.as_str(),
             CustomType::Map {
@@ -79,9 +80,14 @@ pub(crate) fn build_type_dict<C: CodeGenContext>(
     for d in definitions {
         for t in &d.types {
             all_type_names.push(t.type_name().to_owned());
-            if let CustomType::ObjectEnum { values, .. } = t {
-                for v in values {
-                    object_enum_value_type_names.push(v.clone());
+            if let CustomType::ObjectEnum {
+                values, configs, ..
+            } = t
+            {
+                if configs.clone().and_then(|c| c.object_enum_style) != Some(Extern) {
+                    for v in values {
+                        object_enum_value_type_names.push(v.clone());
+                    }
                 }
             }
         }
@@ -116,6 +122,7 @@ pub(crate) fn build_type_dict<C: CodeGenContext>(
                     name,
                     type_tag,
                     values,
+                    configs,
                 } => {
                     let values = values
                         .iter()
@@ -129,6 +136,7 @@ pub(crate) fn build_type_dict<C: CodeGenContext>(
                         name: name.clone(),
                         type_tag: type_tag.clone(),
                         values,
+                        configs: configs.clone(),
                     };
                     all_types.insert(name.clone(), TypeInfo::ObjectEnum(type_info));
                 }

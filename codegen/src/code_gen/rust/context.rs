@@ -29,7 +29,7 @@ impl CodeGenContext for RustContext {
 
 impl RustContext {
     pub fn type_descriptions(&self) -> &str {
-        "#[derive(Debug, Clone, PartialEq, serde::Serialize, serde::Deserialize)]"
+        "#[derive(Debug, Clone, PartialEq, serde::Serialize, serde::Deserialize, derive_new::new)]"
     }
     pub fn write_to_type_file(&self, type_info: &TypeInfo) -> anyhow::Result<Box<dyn Write>> {
         let type_name = type_info.type_name();
@@ -61,6 +61,14 @@ impl RustContext {
         let writer = BufWriter::new(file);
         Ok(Box::new(writer))
     }
+    pub fn get_fqn_for_type(&self, type_info: &TypeInfo) -> String {
+        let package = type_info
+            .package()
+            .split('.')
+            .collect::<Vec<_>>()
+            .join("::");
+        format!("crate::{}::{}", package, type_info.type_name())
+    }
     pub fn get_fully_qualified_type_name(&self, type_name: &TypeName) -> anyhow::Result<String> {
         let full_type_name = match type_name {
             TypeName::Simple(t) => self.options.get_simple_type(t),
@@ -69,12 +77,7 @@ impl RustContext {
                     .types_dict
                     .get(name)
                     .ok_or_else(|| anyhow!("Cannot find custom type: {}", name))?;
-                let package = type_info
-                    .package()
-                    .split('.')
-                    .collect::<Vec<_>>()
-                    .join("::");
-                format!("crate::{}::{}", package, type_info.type_name())
+                self.get_fqn_for_type(type_info)
             }
             TypeName::Any => self.options.any_type.clone(),
         };
