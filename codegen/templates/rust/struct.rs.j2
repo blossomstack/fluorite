@@ -1,11 +1,41 @@
+{%- if doc != "" %}
+/// {{ doc }}
+{%- endif %}
 {{ derives }}
+{%- if rename_all != "" %}
+#[serde(rename_all = "{{ rename_all }}")]
+{%- endif %}
+{%- if deny_unknown_fields %}
+#[serde(deny_unknown_fields)]
+{%- endif %}
 pub struct {{ name }} {
 {%- for field in fields %}
+{%- if field.doc != "" %}
+    /// {{ field.doc }}
+{%- endif %}
+{%- if field.deprecated %}
+    #[deprecated]
+{%- endif %}
 {%- if field.needs_rename %}
     #[serde(rename = "{{ field.original_name }}")]
 {%- endif %}
-{%- if field.is_optional %}
+{%- for alias_name in field.alias %}
+    #[serde(alias = "{{ alias_name }}")]
+{%- endfor %}
+{%- if field.default != "" %}
+    #[serde(default)]
+{%- endif %}
+{%- if field.flatten %}
+    #[serde(flatten)]
+{%- else %}
+    {%- if field.skip_if_none %}
     #[serde(skip_serializing_if = "Option::is_none")]
+    {%- else if field.is_optional %}
+    #[serde(skip_serializing_if = "Option::is_none")]
+    {%- endif %}
+{%- endif %}
+{%- if field.skip_if_default %}
+    #[serde(skip_serializing_if = "is_default")]
 {%- endif %}
     pub {{ field.code_name }}: {{ field.type_str|safe }},
 {%- endfor %}

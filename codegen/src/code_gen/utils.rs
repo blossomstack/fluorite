@@ -34,19 +34,21 @@ impl SimpleType {
 impl CustomType {
     pub(crate) fn type_name(&self) -> &str {
         match self {
-            CustomType::Object { name, fields: _ } => name.as_str(),
-            CustomType::Enum { name, values: _ } => name.as_str(),
+            CustomType::Object { name, fields: _, configs: _, description: _ } => name.as_str(),
+            CustomType::Enum { name, values: _, description: _ } => name.as_str(),
             CustomType::Union {
                 name,
                 type_tag: _,
                 values: _,
                 configs: _,
+                description: _,
             } => name.as_str(),
-            CustomType::List { name, item_type: _ } => name.as_str(),
+            CustomType::List { name, item_type: _, description: _ } => name.as_str(),
             CustomType::Map {
                 name,
                 key_type: _,
                 value_type: _,
+                description: _,
             } => name.as_str(),
         }
     }

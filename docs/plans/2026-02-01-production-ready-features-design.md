@@ -1,7 +1,8 @@
 # Production-Ready Features for Fluorite
 
 **Date:** 2026-02-01
-**Status:** Draft
+**Status:** Implementation Plan Ready
+**Implementation Plan:** [2026-02-01-production-ready-features-impl-plan.md](./2026-02-01-production-ready-features-impl-plan.md)
 **Target:** API contracts and event/message schemas
 
 ## Overview

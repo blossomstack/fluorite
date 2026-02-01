@@ -7,11 +7,15 @@ fn can_serialize_and_deserialize() -> anyhow::Result<()> {
         field_type: "String".to_string(),
         optional: Some(true),
         configs: None,
+        description: None,
+        deprecated: None,
     };
     let fields = vec![field];
     let user_type = CustomType::Object {
         name: "User".to_string(),
         fields,
+        configs: None,
+        description: None,
     };
     let definition = Definition {
         types: vec![user_type],

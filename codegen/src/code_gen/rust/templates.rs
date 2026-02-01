@@ -9,6 +9,12 @@ pub struct StructTemplate {
     pub derives: String,
     pub name: String,
     pub fields: Vec<FieldTemplate>,
+    /// Rename all fields according to case convention
+    pub rename_all: String,
+    /// Deny unknown fields during deserialization
+    pub deny_unknown_fields: bool,
+    /// Documentation comment for this struct
+    pub doc: String,
 }
 
 /// Field information for templates
@@ -19,6 +25,20 @@ pub struct FieldTemplate {
     pub type_str: String,
     pub is_optional: bool,
     pub needs_rename: bool,
+    /// Alias names for serde(alias = "...")
+    pub alias: Vec<String>,
+    /// Default value for serde(default = "...")
+    pub default: String,
+    /// Skip if None for serde(skip_serializing_if = "Option::is_none")
+    pub skip_if_none: bool,
+    /// Skip if default for serde(skip_serializing_if = "...")
+    pub skip_if_default: bool,
+    /// Flatten for serde(flatten)
+    pub flatten: bool,
+    /// Documentation comment for this field
+    pub doc: String,
+    /// Whether this field is deprecated
+    pub deprecated: bool,
 }
 
 impl FieldTemplate {

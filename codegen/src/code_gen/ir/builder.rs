@@ -100,22 +100,32 @@ impl IRBuilder {
 
     fn convert_type(&self, custom_type: &CustomType) -> Result<IRType> {
         match custom_type {
-            CustomType::Object { name, fields } => {
+            CustomType::Object { name, fields, configs, description } => {
                 let is_union_variant = self.union_variant_names.contains(name);
                 let ir_fields = fields.iter().map(|f| self.convert_field(f)).collect();
+
+                // Extract type-level config
+                let rename_all = configs.as_ref().and_then(|c| c.rename_all.clone());
+                let deny_unknown_fields = configs
+                    .as_ref()
+                    .and_then(|c| c.rust.as_ref())
+                    .and_then(|r| r.deny_unknown_fields)
+                    .unwrap_or(false);
 
                 Ok(IRType::Struct(IRStruct {
                     name: name.clone(),
                     fields: ir_fields,
                     is_union_variant,
-                    doc: None,
+                    doc: description.clone(),
+                    rename_all,
+                    deny_unknown_fields,
                 }))
             }
 
-            CustomType::Enum { name, values } => Ok(IRType::Enum(IREnum {
+            CustomType::Enum { name, values, description } => Ok(IRType::Enum(IREnum {
                 name: name.clone(),
                 variants: values.clone(),
-                doc: None,
+                doc: description.clone(),
             })),
 
             CustomType::Union {
@@ -123,6 +133,7 @@ impl IRBuilder {
                 type_tag,
                 values,
                 configs,
+                description,
             } => {
                 let style = configs
                     .as_ref()
@@ -159,16 +170,16 @@ impl IRBuilder {
                     tag_field: type_tag.clone(),
                     variants,
                     style,
-                    doc: None,
+                    doc: description.clone(),
                 }))
             }
 
-            CustomType::List { name, item_type } => {
+            CustomType::List { name, item_type, description } => {
                 let item = self.convert_field_type(item_type);
                 Ok(IRType::TypeAlias(IRTypeAlias {
                     name: name.clone(),
                     target: IRTypeAliasTarget::List(item),
-                    doc: None,
+                    doc: description.clone(),
                 }))
             }
 
@@ -176,13 +187,14 @@ impl IRBuilder {
                 name,
                 key_type,
                 value_type,
+                description,
             } => {
                 let key = self.convert_field_type(key_type);
                 let value = self.convert_field_type(value_type);
                 Ok(IRType::TypeAlias(IRTypeAlias {
                     name: name.clone(),
                     target: IRTypeAliasTarget::Map(key, value),
-                    doc: None,
+                    doc: description.clone(),
                 }))
             }
         }
@@ -190,12 +202,26 @@ impl IRBuilder {
 
     fn convert_field(&self, field: &Field) -> IRField {
         let field_type = self.convert_field_type(&field.field_type);
-        let is_boxed = field
-            .configs
-            .as_ref()
+        let configs = field.configs.as_ref();
+
+        let is_boxed = configs
             .and_then(|c| c.rust_type_wrapper.as_ref())
             .is_some();
-        let rename = field.configs.as_ref().and_then(|c| c.rename.clone());
+        let rename = configs.and_then(|c| c.rename.clone());
+        let alias = configs.and_then(|c| c.alias.clone()).unwrap_or_default();
+        let default = configs.and_then(|c| c.default.clone());
+
+        // Extract Rust-specific config
+        let rust_config = configs.and_then(|c| c.rust.as_ref());
+        let skip_if_none = rust_config
+            .and_then(|r| r.skip_if_none)
+            .unwrap_or(false);
+        let skip_if_default = rust_config
+            .and_then(|r| r.skip_if_default)
+            .unwrap_or(false);
+        let flatten = rust_config
+            .and_then(|r| r.flatten)
+            .unwrap_or(false);
 
         IRField {
             name: field.name.clone(),
@@ -203,7 +229,13 @@ impl IRBuilder {
             is_optional: field.optional.unwrap_or(false),
             is_boxed,
             rename,
-            doc: None,
+            doc: field.description.clone(),
+            alias,
+            default,
+            skip_if_none,
+            skip_if_default,
+            flatten,
+            deprecated: field.deprecated.unwrap_or(false),
         }
     }
 
@@ -221,6 +253,7 @@ impl IRBuilder {
 
     fn parse_primitive(&self, s: &str) -> Option<IRPrimitive> {
         match s {
+            // Basic primitives
             "String" => Some(IRPrimitive::String),
             "Bool" => Some(IRPrimitive::Bool),
             "DateTime" => Some(IRPrimitive::DateTime),
@@ -230,6 +263,18 @@ impl IRBuilder {
             "Int64" => Some(IRPrimitive::Int64),
             "Float32" => Some(IRPrimitive::Float32),
             "Float64" => Some(IRPrimitive::Float64),
+            // Extended primitives
+            "UUID" => Some(IRPrimitive::UUID),
+            "Decimal" => Some(IRPrimitive::Decimal),
+            "Bytes" => Some(IRPrimitive::Bytes),
+            "Url" => Some(IRPrimitive::Url),
+            "Timestamp" => Some(IRPrimitive::Timestamp),
+            "TimestampMillis" => Some(IRPrimitive::TimestampMillis),
+            "DateTimeUtc" => Some(IRPrimitive::DateTimeUtc),
+            "DateTimeTz" => Some(IRPrimitive::DateTimeTz),
+            "Date" => Some(IRPrimitive::Date),
+            "Time" => Some(IRPrimitive::Time),
+            "Duration" => Some(IRPrimitive::Duration),
             _ => None,
         }
     }

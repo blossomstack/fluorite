@@ -57,8 +57,12 @@ pub struct Validator {
 impl Validator {
     pub fn new() -> Self {
         let primitive_types: HashSet<String> = [
+            // Basic primitives
             "String", "Bool", "DateTime", "UInt32", "UInt64", "Int32", "Int64", "Float32",
             "Float64", "Any",
+            // Extended primitives
+            "UUID", "Decimal", "Bytes", "Url", "Timestamp", "TimestampMillis", "DateTimeUtc",
+            "DateTimeTz", "Date", "Time", "Duration",
         ]
         .iter()
         .map(|s| s.to_string())

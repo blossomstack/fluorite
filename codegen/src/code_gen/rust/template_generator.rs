@@ -166,6 +166,9 @@ impl RustTemplateGenerator {
             derives: self.options.get_derives_string(),
             name: s.name.clone(),
             fields,
+            rename_all: s.rename_all.clone().unwrap_or_default(),
+            deny_unknown_fields: s.deny_unknown_fields,
+            doc: s.doc.clone().unwrap_or_default(),
         };
 
         Ok(template.render()?)
@@ -234,6 +237,13 @@ impl RustTemplateGenerator {
             type_str,
             is_optional: field.is_optional,
             needs_rename: field.needs_rename(),
+            alias: field.alias.clone(),
+            default: field.default.clone().unwrap_or_default(),
+            skip_if_none: field.skip_if_none,
+            skip_if_default: field.skip_if_default,
+            flatten: field.flatten,
+            doc: field.doc.clone().unwrap_or_default(),
+            deprecated: field.deprecated,
         })
     }
 
@@ -287,15 +297,28 @@ impl RustTemplateGenerator {
 
     fn format_primitive(&self, p: IRPrimitive) -> String {
         match p {
+            // Basic primitives
             IRPrimitive::String => "String".to_string(),
             IRPrimitive::Bool => "bool".to_string(),
-            IRPrimitive::DateTime => "DateTime".to_string(),
+            IRPrimitive::DateTime => "chrono::NaiveDateTime".to_string(),
             IRPrimitive::UInt32 => "u32".to_string(),
             IRPrimitive::UInt64 => "u64".to_string(),
             IRPrimitive::Int32 => "i32".to_string(),
             IRPrimitive::Int64 => "i64".to_string(),
             IRPrimitive::Float32 => "f32".to_string(),
             IRPrimitive::Float64 => "f64".to_string(),
+            // Extended primitives
+            IRPrimitive::UUID => "uuid::Uuid".to_string(),
+            IRPrimitive::Decimal => "rust_decimal::Decimal".to_string(),
+            IRPrimitive::Bytes => "Vec<u8>".to_string(),
+            IRPrimitive::Url => "url::Url".to_string(),
+            IRPrimitive::Timestamp => "i64".to_string(),
+            IRPrimitive::TimestampMillis => "i64".to_string(),
+            IRPrimitive::DateTimeUtc => "chrono::DateTime<chrono::Utc>".to_string(),
+            IRPrimitive::DateTimeTz => "chrono::DateTime<chrono::FixedOffset>".to_string(),
+            IRPrimitive::Date => "chrono::NaiveDate".to_string(),
+            IRPrimitive::Time => "chrono::NaiveTime".to_string(),
+            IRPrimitive::Duration => "chrono::Duration".to_string(),
         }
     }
 

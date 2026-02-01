@@ -52,6 +52,10 @@ pub struct IRStruct {
     pub fields: Vec<IRField>,
     pub is_union_variant: bool,
     pub doc: Option<String>,
+    /// Rename all fields according to case convention
+    pub rename_all: Option<String>,
+    /// Deny unknown fields during deserialization
+    pub deny_unknown_fields: bool,
 }
 
 /// A field within a struct
@@ -63,6 +67,18 @@ pub struct IRField {
     pub is_boxed: bool,
     pub rename: Option<String>,
     pub doc: Option<String>,
+    /// Alternative names for this field when deserializing
+    pub alias: Vec<String>,
+    /// Default value expression for this field
+    pub default: Option<String>,
+    /// Skip serialization if None
+    pub skip_if_none: bool,
+    /// Skip serialization if equal to default
+    pub skip_if_default: bool,
+    /// Flatten this field
+    pub flatten: bool,
+    /// Whether this field is deprecated
+    pub deprecated: bool,
 }
 
 impl IRField {
@@ -80,6 +96,11 @@ impl IRField {
     pub fn needs_rename(&self) -> bool {
         self.rename.is_some()
     }
+
+    /// Whether this field has alias attributes
+    pub fn has_alias(&self) -> bool {
+        !self.alias.is_empty()
+    }
 }
 
 /// Field type representation
@@ -95,6 +116,7 @@ pub enum IRFieldType {
 /// Primitive types
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum IRPrimitive {
+    // Basic primitives
     String,
     Bool,
     DateTime,
@@ -104,6 +126,18 @@ pub enum IRPrimitive {
     Int64,
     Float32,
     Float64,
+    // Extended primitives
+    UUID,
+    Decimal,
+    Bytes,
+    Url,
+    Timestamp,
+    TimestampMillis,
+    DateTimeUtc,
+    DateTimeTz,
+    Date,
+    Time,
+    Duration,
 }
 
 /// An enum type (simple variants without data)
