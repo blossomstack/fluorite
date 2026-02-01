@@ -30,11 +30,11 @@ types:
       - name: shipping
         type: Shipping
         optional: true
-        config:
+        configs:
           rust_type_wrapper: Box
       - name: type
         type: String
-        config:
+        configs:
           rename: order_type
 
   - name: Shipping

@@ -1,0 +1,13 @@
+{{ derives }}
+pub struct {{ name }} {
+{%- for field in fields %}
+{%- if field.needs_rename %}
+    #[serde(rename = "{{ field.original_name }}")]
+{%- endif %}
+{%- if field.is_optional %}
+    #[serde(skip_serializing_if = "Option::is_none")]
+{%- endif %}
+    pub {{ field.code_name }}: {{ field.type_str|safe }},
+{%- endfor %}
+}
+

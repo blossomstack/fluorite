@@ -1,36 +1,32 @@
 use std::fs;
+use std::sync::Arc;
 
-use crate::{
-    code_gen::{
-        rust::{RustOptions, RustProvider},
-        CodeGenerator,
-    },
-    definitions::Definition,
-};
+use crate::code_gen::fs::RealFileSystem;
+use crate::code_gen::rust::{RustOptions, RustTemplateGenerator};
+use crate::definitions::Definition;
 
-pub fn compile_with_options(options: RustOptions, inputs: &[&str]) -> anyhow::Result<()> {
-    let definitions = inputs
+/// Compile YAML definitions to Rust code with custom options
+pub fn compile_with_options(options: RustOptions, yaml_files: &[&str]) -> anyhow::Result<()> {
+    let definitions: Vec<Definition> = yaml_files
         .iter()
-        .map(|s| deserialize_definition_file(s))
-        .collect::<anyhow::Result<Vec<Definition>>>()?;
-    let config = RustProvider::new(options);
+        .map(|path| {
+            let content = fs::read_to_string(path)?;
+            let def: Definition = serde_yaml::from_str(&content)?;
+            Ok(def)
+        })
+        .collect::<anyhow::Result<Vec<_>>>()?;
 
-    let generator = CodeGenerator::new(Box::new(config));
+    let fs = Arc::new(RealFileSystem::new());
+    let generator = RustTemplateGenerator::new(options, fs);
     generator.generate(&definitions)?;
+
     Ok(())
 }
 
-pub fn compile(inputs: &[&str], output: &str) -> anyhow::Result<()> {
-    let definitions = inputs
-        .iter()
-        .map(|s| deserialize_definition_file(s))
-        .collect::<anyhow::Result<Vec<Definition>>>()?;
-    let options = RustOptions::new(output.to_owned());
-    let config = RustProvider::new(options);
-
-    let generator = CodeGenerator::new(Box::new(config));
-    generator.generate(&definitions)?;
-    Ok(())
+/// Compile YAML definitions to Rust code with default options
+pub fn compile(output_dir: &str, yaml_files: &[&str]) -> anyhow::Result<()> {
+    let options = RustOptions::new(output_dir.to_string());
+    compile_with_options(options, yaml_files)
 }
 
 pub(crate) fn deserialize_definition_file(file_path: &str) -> anyhow::Result<Definition> {

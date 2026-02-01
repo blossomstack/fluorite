@@ -1,0 +1,22 @@
+{{ derives }}
+#[serde(tag = "{{ tag_field }}")]
+pub enum {{ name }} {
+{%- for variant in variants %}
+{%- match variant %}
+{%- when UnionVariantTemplate::Unit with (name) %}
+    {{ name }},
+{%- when UnionVariantTemplate::Inline with { name, fields } %}
+    {{ name }} {
+{%- for field in fields %}
+{%- if field.needs_rename %}
+        #[serde(rename = "{{ field.original_name }}")]
+{%- endif %}
+        {{ field.code_name }}: {{ field.type_str|safe }},
+{%- endfor %}
+    },
+{%- when UnionVariantTemplate::Newtype with { name, type_str } %}
+    {{ name }}({{ type_str|safe }}),
+{%- endmatch %}
+{%- endfor %}
+}
+

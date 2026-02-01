@@ -12,60 +12,134 @@
     )
 )]
 
-use clap::{Parser, Subcommand};
-use code_gen::{
-    rust::{RustOptions, RustProvider},
-    CodeGenerator,
-};
+use std::fs;
+use std::sync::Arc;
 
-use crate::utils::deserialize_definition_file;
+use clap::{Parser, Subcommand};
+
+use code_gen::fs::RealFileSystem;
+use code_gen::rust::{RustOptions, RustTemplateGenerator, Visibility};
+use definitions::Definition;
 
 mod code_gen;
 mod definitions;
 mod utils;
 
-#[derive(Debug, Parser)]
-#[clap(author, version, about, long_about = None)]
-struct Args {
-    /// Sub commands for different target languages
-    #[clap(subcommand)]
-    pub command: Command,
+#[derive(Parser)]
+#[command(name = "fluorite")]
+#[command(about = "Code generator from YAML schema definitions")]
+struct Cli {
+    #[command(subcommand)]
+    command: Commands,
 }
 
-#[derive(Debug, Subcommand)]
-enum Command {
+#[derive(Subcommand)]
+enum Commands {
+    /// Generate Rust code from YAML definitions
     Rust {
-        /// Input definition files
-        #[clap(short, long)]
+        /// Input YAML files
+        #[arg(short, long, required = true, num_args = 1..)]
         inputs: Vec<String>,
+
         /// Output directory
-        #[clap(short, long)]
+        #[arg(short, long)]
         output: String,
 
-        /// Output codes to a single mod file for each package
-        #[clap(short, long, default_value_t = true)]
+        /// Generate all types in a single mod.rs file per package
+        #[arg(long, default_value = "true")]
         single_file: bool,
+
+        /// Custom type to use for 'Any' fields
+        #[arg(long, default_value = "fluorite::Any")]
+        any_type: String,
+
+        /// Custom derives (comma-separated, replaces defaults)
+        #[arg(long)]
+        derives: Option<String>,
+
+        /// Additional derives to add to defaults (comma-separated)
+        #[arg(long)]
+        extra_derives: Option<String>,
+
+        /// Generate derive_new::new implementation
+        #[arg(long, default_value = "true")]
+        generate_new: bool,
+
+        /// Visibility for generated types (public, pub_crate, private)
+        #[arg(long, default_value = "public")]
+        visibility: String,
     },
 }
+
 fn main() -> anyhow::Result<()> {
-    let args = Args::parse();
-    match args.command {
-        Command::Rust {
+    let cli = Cli::parse();
+
+    match cli.command {
+        Commands::Rust {
             inputs,
             output,
             single_file,
+            any_type,
+            derives,
+            extra_derives,
+            generate_new,
+            visibility,
         } => {
-            let definitions = inputs
+            // Parse definitions
+            let definitions: Vec<Definition> = inputs
                 .iter()
-                .map(|f| deserialize_definition_file(f))
+                .map(|path| {
+                    let content = fs::read_to_string(path)?;
+                    let def: Definition = serde_yaml::from_str(&content)?;
+                    Ok(def)
+                })
                 .collect::<anyhow::Result<Vec<_>>>()?;
 
-            let options = RustOptions::new(output.to_owned()).with_single_file(single_file);
-            let config = RustProvider::new(options);
+            // Build options
+            let mut options = RustOptions::new(output)
+                .with_single_file(single_file)
+                .with_any_type(&any_type)
+                .with_generate_new(generate_new);
 
-            let generator = CodeGenerator::new(Box::new(config));
+            // Handle derives
+            if let Some(custom_derives) = derives {
+                let derives: Vec<String> = custom_derives
+                    .split(',')
+                    .map(|s| s.trim().to_string())
+                    .filter(|s| !s.is_empty())
+                    .collect();
+                options = options.with_derives(derives);
+            }
+
+            if let Some(extra) = extra_derives {
+                let extra: Vec<String> = extra
+                    .split(',')
+                    .map(|s| s.trim().to_string())
+                    .filter(|s| !s.is_empty())
+                    .collect();
+                options = options.with_additional_derives(extra);
+            }
+
+            // Handle visibility
+            let vis = match visibility.to_lowercase().as_str() {
+                "public" | "pub" => Visibility::Public,
+                "pub_crate" | "pub(crate)" => Visibility::PublicCrate,
+                "private" => Visibility::Private,
+                _ => {
+                    eprintln!("Unknown visibility '{}', using 'public'", visibility);
+                    Visibility::Public
+                }
+            };
+            options = options.with_visibility(vis);
+
+            // Generate
+            let fs = Arc::new(RealFileSystem::new());
+            let generator = RustTemplateGenerator::new(options, fs);
             generator.generate(&definitions)?;
+
+            println!("Code generation complete!");
         }
     }
+
     Ok(())
 }

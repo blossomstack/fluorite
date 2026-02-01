@@ -70,7 +70,7 @@ types:
     fields: [...]      # for Object
     values: [...]      # for Enum
     type_tag: "field"  # for Union (tagged union discriminator)
-    config:
+    configs:
       rust_type_wrapper: Box
       union_style: Inline|Extern
       rename: "json_name"
@@ -104,3 +104,50 @@ mod generated {
 ## Testing Examples
 
 The `examples/orders.yml` and `examples/users.yml` files are used by tests in `codegen/tests/rust_code_gen.rs` to verify code generation output.
+
+## New Template-Based Architecture (v2)
+
+The code generator now uses a template-based approach with askama:
+
+### Key Components
+
+1. **IR (Intermediate Representation)** - `codegen/src/code_gen/ir/`
+   - Language-agnostic representation of types
+   - `IRBuilder` converts YAML definitions to IR
+   - Separates parsing from code generation
+
+2. **Validation** - `codegen/src/code_gen/validation/`
+   - Validates schemas before generation
+   - Detects: unknown types, duplicate types, empty types
+
+3. **Templates** - `codegen/templates/rust/`
+   - Askama templates for Rust code output
+   - Compile-time checked for correctness
+
+4. **FileSystem Abstraction** - `codegen/src/code_gen/fs/`
+   - `FileSystem` trait for I/O operations
+   - `MemoryFileSystem` for testing
+   - `RealFileSystem` for production
+
+5. **RustTemplateGenerator** - `codegen/src/code_gen/rust/template_generator.rs`
+   - Main entry point for Rust code generation
+   - Uses IR + Validation + Templates
+
+### Configuration Options
+
+```rust
+RustOptions::new(output_dir)
+    .with_single_file(true)           // All types in mod.rs
+    .with_any_type("serde_json::Value") // Custom Any type
+    .with_derives(vec!["Debug", ...])  // Custom derives
+    .with_additional_derives(vec![...]) // Extra derives
+    .with_generate_new(true)           // derive_new::new
+    .with_visibility(Visibility::Public)
+```
+
+### Adding a New Language
+
+1. Create `codegen/templates/<lang>/` with templates
+2. Create `codegen/src/code_gen/<lang>/template_generator.rs`
+3. Implement type formatting and FQN resolution for the language
+4. Add CLI subcommand

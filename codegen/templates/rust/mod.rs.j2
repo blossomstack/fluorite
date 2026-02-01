@@ -1,0 +1,4 @@
+{%- for module in modules %}
+mod {{ module.file_name }};
+pub use crate::{{ package }}::{{ module.file_name }}::*;
+{%- endfor %}
