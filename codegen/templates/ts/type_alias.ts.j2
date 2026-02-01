@@ -4,4 +4,9 @@ import { {{ import.name }} } from '{{ import.path }}';
 {%- endfor %}
 
 {%- endif %}
+{%- if doc != "" %}
+/**
+ * {{ doc }}
+ */
+{%- endif %}
 export type {{ name }} = {{ target_type|safe }};

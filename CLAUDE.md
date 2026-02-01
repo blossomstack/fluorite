@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-Fluorite is a Rust code generation tool that generates Rust (and planned TypeScript) code from YAML schema definitions. It's an IDL/schema-based code generator focused on serialization/deserialization patterns with serde.
+Fluorite is a code generation tool that generates Rust and TypeScript code from YAML schema definitions. It's an IDL/schema-based code generator focused on serialization/deserialization patterns with serde.
 
 ## Build Commands
 
@@ -48,7 +48,7 @@ CodeGenProvider (trait)
 └── MapWriter           # Write map types
 ```
 
-The **RustProvider** (`codegen/src/code_gen/rust/`) implements all traits for Rust code generation. TypeScript generation exists as a stub in `codegen/src/code_gen/ts/`.
+The **RustProvider** (`codegen/src/code_gen/rust/`) implements all traits for Rust code generation. The **TsTemplateGenerator** (`codegen/src/code_gen/ts/`) provides full TypeScript code generation using the same IR layer.
 
 ### Key Files
 
@@ -78,10 +78,13 @@ types:
 
 ### Supported Types
 
-- **Primitives:** String, Bool, DateTime, UInt32, UInt64, Int32, Int64, Float32, Float64
+- **Basic Primitives:** String, Bool, DateTime, UInt32, UInt64, Int32, Int64, Float32, Float64
+- **Extended Primitives:** UUID, Decimal, Bytes, Url, Timestamp, TimestampMillis, DateTimeUtc, DateTimeTz, Date, Time, Duration
 - **Collections:** List, Map
 - **Custom:** Object (struct), Enum, Union (polymorphic tagged union), Any
 - **Modifiers:** Optional fields, field renaming, type wrappers (Box)
+- **Serde Features:** rename_all, alias, default, skip_if_none, skip_if_default, flatten, deny_unknown_fields
+- **Documentation:** description (doc comments), deprecated annotation
 
 ## Build.rs Integration
 
@@ -177,14 +180,25 @@ npx @zhxiaogg/fluorite-cli ts --inputs ./schemas/*.yaml --output ./src/generated
 
 | YAML Type | TypeScript |
 |-----------|-----------|
-| String, DateTime | `string` |
+| String, DateTime, DateTimeUtc, DateTimeTz, Date, Time, Duration | `string` |
 | Bool | `boolean` |
-| Int32, Int64, UInt32, UInt64, Float32, Float64 | `number` |
+| Int32, Int64, UInt32, UInt64, Float32, Float64, Timestamp, TimestampMillis | `number` |
+| UUID, Decimal, Bytes, Url | `string` |
 | Any | `unknown` |
 | List<T> | `T[]` |
 | Map<K, V> | `Record<K, V>` |
 | Optional field | `field?: Type` |
 
+### TypeScript Configuration Options
+
+```rust
+TypeScriptOptions::new(output_dir)
+    .with_single_file(true)           // All types in index.ts
+    .with_any_type("any")             // Custom Any type mapping
+    .with_readonly(true)              // Generate readonly properties
+    .with_package_name("custom")      // Override output package directory
+```
+
 ### Design Document
 
-See `docs/plans/2026-02-01-typescript-codegen-design.md` for full design details.
+See `docs/plans/2026-02-01-production-ready-features-design.md` for full design details.

@@ -194,6 +194,7 @@ impl TsTemplateGenerator {
             fields,
             use_readonly: self.options.use_readonly,
             imports,
+            doc: s.doc.clone().unwrap_or_default(),
         };
 
         Ok(template.render()?)
@@ -203,6 +204,7 @@ impl TsTemplateGenerator {
         let template = TsEnumTemplate {
             name: e.name.clone(),
             variants: e.variants.clone(),
+            doc: e.doc.clone().unwrap_or_default(),
         };
 
         Ok(template.render()?)
@@ -232,6 +234,7 @@ impl TsTemplateGenerator {
             tag_field: u.tag_field.clone(),
             variants,
             imports,
+            doc: u.doc.clone().unwrap_or_default(),
         };
 
         Ok(template.render()?)
@@ -266,6 +269,7 @@ impl TsTemplateGenerator {
             name: a.name.clone(),
             target_type,
             imports,
+            doc: a.doc.clone().unwrap_or_default(),
         };
 
         Ok(template.render()?)
@@ -285,6 +289,8 @@ impl TsTemplateGenerator {
             code_name,
             type_str,
             is_optional: field.is_optional,
+            doc: field.doc.clone().unwrap_or_default(),
+            deprecated: field.deprecated,
         })
     }
 
@@ -335,12 +341,28 @@ impl TsTemplateGenerator {
 
     fn format_primitive(&self, p: IRPrimitive) -> String {
         match p {
+            // Basic primitives
             IRPrimitive::String => "string".to_string(),
             IRPrimitive::Bool => "boolean".to_string(),
             IRPrimitive::DateTime => "string".to_string(),
-            IRPrimitive::UInt32 | IRPrimitive::UInt64 |
-            IRPrimitive::Int32 | IRPrimitive::Int64 |
-            IRPrimitive::Float32 | IRPrimitive::Float64 => "number".to_string(),
+            IRPrimitive::UInt32
+            | IRPrimitive::UInt64
+            | IRPrimitive::Int32
+            | IRPrimitive::Int64
+            | IRPrimitive::Float32
+            | IRPrimitive::Float64 => "number".to_string(),
+            // Extended primitives - all serialize as strings in JSON except timestamps
+            IRPrimitive::UUID => "string".to_string(),
+            IRPrimitive::Decimal => "string".to_string(),
+            IRPrimitive::Bytes => "string".to_string(), // base64 encoded
+            IRPrimitive::Url => "string".to_string(),
+            IRPrimitive::Timestamp => "number".to_string(),      // Unix epoch seconds
+            IRPrimitive::TimestampMillis => "number".to_string(), // Unix epoch milliseconds
+            IRPrimitive::DateTimeUtc => "string".to_string(),    // ISO 8601
+            IRPrimitive::DateTimeTz => "string".to_string(),     // ISO 8601 with timezone
+            IRPrimitive::Date => "string".to_string(),           // ISO 8601 date
+            IRPrimitive::Time => "string".to_string(),           // ISO 8601 time
+            IRPrimitive::Duration => "string".to_string(),       // ISO 8601 duration
         }
     }
 

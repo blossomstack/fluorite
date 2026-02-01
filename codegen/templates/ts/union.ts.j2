@@ -4,6 +4,11 @@ import { {{ import.name }} } from '{{ import.path }}';
 {%- endfor %}
 
 {%- endif %}
+{%- if doc != "" %}
+/**
+ * {{ doc }}
+ */
+{%- endif %}
 export type {{ name }} =
 {%- for variant in variants %}
 {%- match variant %}

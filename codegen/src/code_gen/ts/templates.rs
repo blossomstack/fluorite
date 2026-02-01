@@ -6,6 +6,10 @@ pub struct TsFieldTemplate {
     pub code_name: String,
     pub type_str: String,
     pub is_optional: bool,
+    /// Documentation comment for this field
+    pub doc: String,
+    /// Whether this field is deprecated
+    pub deprecated: bool,
 }
 
 /// Import information for TypeScript templates
@@ -23,6 +27,8 @@ pub struct InterfaceTemplate {
     pub fields: Vec<TsFieldTemplate>,
     pub use_readonly: bool,
     pub imports: Vec<TsImport>,
+    /// Documentation comment for this interface
+    pub doc: String,
 }
 
 /// Template for rendering a TypeScript enum
@@ -31,6 +37,8 @@ pub struct InterfaceTemplate {
 pub struct TsEnumTemplate {
     pub name: String,
     pub variants: Vec<String>,
+    /// Documentation comment for this enum
+    pub doc: String,
 }
 
 /// Union variant types for template
@@ -55,6 +63,8 @@ pub struct TsUnionTemplate {
     pub tag_field: String,
     pub variants: Vec<TsUnionVariantTemplate>,
     pub imports: Vec<TsImport>,
+    /// Documentation comment for this union
+    pub doc: String,
 }
 
 /// Template for rendering a TypeScript type alias
@@ -64,6 +74,8 @@ pub struct TsTypeAliasTemplate {
     pub name: String,
     pub target_type: String,
     pub imports: Vec<TsImport>,
+    /// Documentation comment for this type alias
+    pub doc: String,
 }
 
 /// Template for rendering an index file

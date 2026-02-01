@@ -4,8 +4,23 @@ import { {{ import.name }} } from '{{ import.path }}';
 {%- endfor %}
 
 {%- endif %}
+{%- if doc != "" %}
+/**
+ * {{ doc }}
+ */
+{%- endif %}
 export interface {{ name }} {
 {%- for field in fields %}
+{%- if field.doc != "" || field.deprecated %}
+  /**
+{%- if field.doc != "" %}
+   * {{ field.doc }}
+{%- endif %}
+{%- if field.deprecated %}
+   * @deprecated
+{%- endif %}
+   */
+{%- endif %}
 {%- if use_readonly %}
   readonly {{ field.code_name }}{% if field.is_optional %}?{% endif %}: {{ field.type_str|safe }};
 {%- else %}
