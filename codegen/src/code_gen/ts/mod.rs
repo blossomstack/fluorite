@@ -1,6 +1,6 @@
 use super::abi::{
-    CodeGenContext, CodeGenProvider, EnumWriter, ListWriter, MapWriter, ObjectEnumWriter,
-    ObjectWriter, PackageWriter, PreProcessor, TypeInfo,
+    CodeGenContext, CodeGenProvider, EnumWriter, ListWriter, MapWriter, ObjectWriter,
+    PackageWriter, PreProcessor, TypeInfo, UnionWriter,
 };
 use std::collections::HashMap;
 use std::io::Write;
@@ -18,6 +18,7 @@ impl CodeGenContext for TsContext {
     }
 }
 pub struct TsProvider {
+    #[allow(dead_code)]
     options: TsOptions,
 }
 
@@ -43,7 +44,7 @@ impl CodeGenProvider<TsContext> for TsProvider {
         todo!()
     }
 
-    fn get_object_enum_writer(&self) -> Box<dyn ObjectEnumWriter<TsContext>> {
+    fn get_union_writer(&self) -> Box<dyn UnionWriter<TsContext>> {
         todo!()
     }
 

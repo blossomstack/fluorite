@@ -47,7 +47,7 @@ types:
       - name: address
         type: Address
   - name: Address
-    type: ObjectEnum
+    type: Union
     type_tag: type
     values:
       - Empty

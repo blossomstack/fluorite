@@ -17,10 +17,10 @@ name="fluorite"
 path="src/lib.rs"
 
 [dependencies]
-serde = {version = "1.0.193", features =["serde_derive"]}
+serde = { version = "1.0", features = ["serde_derive"] }
 
 [dev-dependencies]
-anyhow = "1.0.76"
-serde_json = "1.0.108"
+anyhow = "1.0"
+serde_json = "1.0"
 
 

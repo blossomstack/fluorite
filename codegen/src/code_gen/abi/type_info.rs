@@ -3,7 +3,7 @@ use crate::definitions::{Field, FieldConfig, SimpleType, TypeConfig};
 pub enum TypeInfo {
     Object(ObjectTypeInfo),
     Enum(EnumTypeInfo),
-    ObjectEnum(ObjectEnumTypeInfo),
+    Union(UnionTypeInfo),
     List(ListTypeInfo),
     Map(MapTypeInfo),
 }
@@ -23,7 +23,7 @@ impl TypeName {
         }
     }
 
-    pub fn from_str(field_type: &str) -> TypeName {
+    pub fn parse(field_type: &str) -> TypeName {
         let opt_simple_type = SimpleType::all_values()
             .into_iter()
             .find(|t| t.to_string() == field_type);
@@ -48,15 +48,15 @@ pub struct MapTypeInfo {
     pub value_type: TypeName,
 }
 
-pub struct ObjectEnumTypeInfo {
+pub struct UnionTypeInfo {
     pub package: String,
     pub name: String,
     pub type_tag: String,
-    pub values: Vec<ObjectEnumValue>,
+    pub values: Vec<UnionValue>,
     pub configs: Option<TypeConfig>,
 }
 
-pub enum ObjectEnumValue {
+pub enum UnionValue {
     Simple(String),
     CustomType(String),
 }
@@ -71,7 +71,7 @@ pub struct ObjectTypeInfo {
     pub package: String,
     pub name: String,
     pub fields: Vec<ObjectField>,
-    pub is_object_enum_value: bool,
+    pub is_union_value: bool,
 }
 
 pub struct ObjectField {
@@ -85,7 +85,7 @@ impl From<&Field> for ObjectField {
     fn from(f: &Field) -> Self {
         ObjectField {
             name: f.name.clone(),
-            field_type: TypeName::from_str(f.field_type.as_str()),
+            field_type: TypeName::parse(f.field_type.as_str()),
             config: f.configs.clone(),
             optional: f.optional,
         }
@@ -99,10 +99,10 @@ impl ObjectField {
 }
 
 impl TypeInfo {
-    pub fn is_object_enum_value(&self) -> bool {
+    pub fn is_union_value(&self) -> bool {
         match self {
-            TypeInfo::Object(o) => o.is_object_enum_value,
-            _ => false,
+            TypeInfo::Object(o) => o.is_union_value,
+            TypeInfo::Enum(_) | TypeInfo::Union(_) | TypeInfo::List(_) | TypeInfo::Map(_) => false,
         }
     }
 
@@ -113,12 +113,12 @@ impl TypeInfo {
                 Self::get_custom_types(field_types)
             }
             TypeInfo::Enum(_) => vec![],
-            TypeInfo::ObjectEnum(e) => e
+            TypeInfo::Union(e) => e
                 .values
                 .iter()
                 .filter_map(|v| match v {
-                    ObjectEnumValue::Simple(_) => None,
-                    ObjectEnumValue::CustomType(t) => Some(t.clone()),
+                    UnionValue::Simple(_) => None,
+                    UnionValue::CustomType(t) => Some(t.clone()),
                 })
                 .collect(),
             TypeInfo::List(l) => match &l.item_type {
@@ -135,7 +135,7 @@ impl TypeInfo {
             .into_iter()
             .filter_map(|t| match t {
                 TypeName::CustomType(name) => Some(name.clone()),
-                _ => None,
+                TypeName::Any | TypeName::Simple(_) => None,
             })
             .collect()
     }
@@ -144,7 +144,7 @@ impl TypeInfo {
         match self {
             TypeInfo::Object(o) => o.name.as_str(),
             TypeInfo::Enum(e) => e.name.as_str(),
-            TypeInfo::ObjectEnum(o) => o.name.as_str(),
+            TypeInfo::Union(o) => o.name.as_str(),
             TypeInfo::List(l) => l.name.as_str(),
             TypeInfo::Map(m) => m.name.as_str(),
         }
@@ -154,7 +154,7 @@ impl TypeInfo {
         match self {
             TypeInfo::Object(o) => o.package.as_str(),
             TypeInfo::Enum(e) => e.package.as_str(),
-            TypeInfo::ObjectEnum(o) => o.package.as_str(),
+            TypeInfo::Union(o) => o.package.as_str(),
             TypeInfo::List(l) => l.package.as_str(),
             TypeInfo::Map(m) => m.package.as_str(),
         }

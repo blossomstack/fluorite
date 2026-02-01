@@ -10,7 +10,7 @@ pub trait CodeGenProvider<C: CodeGenContext> {
     fn get_package_writer(&self) -> Option<Box<dyn PackageWriter<C>>>;
     fn get_object_writer(&self) -> Box<dyn ObjectWriter<C>>;
     fn get_enum_writer(&self) -> Box<dyn EnumWriter<C>>;
-    fn get_object_enum_writer(&self) -> Box<dyn ObjectEnumWriter<C>>;
+    fn get_union_writer(&self) -> Box<dyn UnionWriter<C>>;
     fn get_list_writer(&self) -> Box<dyn ListWriter<C>>;
     fn get_map_writer(&self) -> Box<dyn MapWriter<C>>;
 }
@@ -27,12 +27,7 @@ pub trait PreProcessor<C: CodeGenContext> {
 }
 
 pub trait PackageWriter<C: CodeGenContext> {
-    fn write_package(
-        &self,
-        package: &str,
-        types: &Vec<&TypeInfo>,
-        context: &C,
-    ) -> anyhow::Result<()>;
+    fn write_package(&self, package: &str, types: &[&TypeInfo], context: &C) -> anyhow::Result<()>;
 }
 
 pub trait MapWriter<C: CodeGenContext> {
@@ -53,11 +48,11 @@ pub trait ListWriter<C: CodeGenContext> {
     ) -> anyhow::Result<()>;
 }
 
-pub trait ObjectEnumWriter<C: CodeGenContext> {
-    fn write_object_enum(
+pub trait UnionWriter<C: CodeGenContext> {
+    fn write_union(
         &self,
         writer: &mut dyn Write,
-        type_info: &ObjectEnumTypeInfo,
+        type_info: &UnionTypeInfo,
         context: &C,
     ) -> anyhow::Result<()>;
 }

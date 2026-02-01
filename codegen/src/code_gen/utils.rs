@@ -1,11 +1,11 @@
 use core::fmt;
-use std::{collections::HashMap, fmt::Display, str::FromStr};
+use std::{collections::HashMap, fmt::Display};
 
-use crate::definitions::{CustomType, Definition, ObjectEnumStyle::Extern, SimpleType};
+use crate::definitions::{CustomType, Definition, SimpleType, UnionStyle::Extern};
 
 use super::abi::{
-    CodeGenContext, EnumTypeInfo, ListTypeInfo, MapTypeInfo, ObjectEnumTypeInfo, ObjectEnumValue,
-    ObjectField, ObjectTypeInfo, PreProcessor, TypeInfo, TypeName,
+    CodeGenContext, EnumTypeInfo, ListTypeInfo, MapTypeInfo, ObjectField, ObjectTypeInfo,
+    PreProcessor, TypeInfo, TypeName, UnionTypeInfo, UnionValue,
 };
 
 impl Display for SimpleType {
@@ -41,7 +41,7 @@ impl CustomType {
         match self {
             CustomType::Object { name, fields: _ } => name.as_str(),
             CustomType::Enum { name, values: _ } => name.as_str(),
-            CustomType::ObjectEnum {
+            CustomType::Union {
                 name,
                 type_tag: _,
                 values: _,
@@ -73,20 +73,20 @@ pub fn to_snake_case(s: &str) -> String {
 
 pub(crate) fn build_type_dict<C: CodeGenContext>(
     definitions: &Vec<Definition>,
-    pre_processor: &Box<dyn PreProcessor<C>>,
+    pre_processor: &dyn PreProcessor<C>,
 ) -> anyhow::Result<HashMap<String, TypeInfo>> {
-    let mut object_enum_value_type_names = Vec::new();
+    let mut union_value_type_names = Vec::new();
     let mut all_type_names = Vec::new();
     for d in definitions {
         for t in &d.types {
             all_type_names.push(t.type_name().to_owned());
-            if let CustomType::ObjectEnum {
+            if let CustomType::Union {
                 values, configs, ..
             } = t
             {
-                if configs.clone().and_then(|c| c.object_enum_style) != Some(Extern) {
+                if configs.clone().and_then(|c| c.union_style) != Some(Extern) {
                     for v in values {
-                        object_enum_value_type_names.push(v.clone());
+                        union_value_type_names.push(v.clone());
                     }
                 }
             }
@@ -101,12 +101,12 @@ pub(crate) fn build_type_dict<C: CodeGenContext>(
             match t {
                 CustomType::Object { name, fields } => {
                     let fields = fields.iter().map(ObjectField::from).collect();
-                    let is_object_enum_value = object_enum_value_type_names.contains(name);
+                    let is_union_value = union_value_type_names.contains(name);
                     let type_info = ObjectTypeInfo {
                         package: package.clone(),
                         name: name.clone(),
                         fields,
-                        is_object_enum_value,
+                        is_union_value,
                     };
                     all_types.insert(name.clone(), TypeInfo::Object(type_info));
                 }
@@ -118,7 +118,7 @@ pub(crate) fn build_type_dict<C: CodeGenContext>(
                     };
                     all_types.insert(name.clone(), TypeInfo::Enum(type_info));
                 }
-                CustomType::ObjectEnum {
+                CustomType::Union {
                     name,
                     type_tag,
                     values,
@@ -127,24 +127,24 @@ pub(crate) fn build_type_dict<C: CodeGenContext>(
                     let values = values
                         .iter()
                         .map(|v| match all_type_names.contains(v) {
-                            true => ObjectEnumValue::CustomType(v.clone()),
-                            false => ObjectEnumValue::Simple(v.clone()),
+                            true => UnionValue::CustomType(v.clone()),
+                            false => UnionValue::Simple(v.clone()),
                         })
                         .collect();
-                    let type_info = ObjectEnumTypeInfo {
+                    let type_info = UnionTypeInfo {
                         package: package.clone(),
                         name: name.clone(),
                         type_tag: type_tag.clone(),
                         values,
                         configs: configs.clone(),
                     };
-                    all_types.insert(name.clone(), TypeInfo::ObjectEnum(type_info));
+                    all_types.insert(name.clone(), TypeInfo::Union(type_info));
                 }
                 CustomType::List { name, item_type } => {
                     let type_info = ListTypeInfo {
                         package: package.clone(),
                         name: name.clone(),
-                        item_type: TypeName::from_str(item_type),
+                        item_type: TypeName::parse(item_type),
                     };
                     all_types.insert(name.clone(), TypeInfo::List(type_info));
                 }
@@ -156,8 +156,8 @@ pub(crate) fn build_type_dict<C: CodeGenContext>(
                     let type_info = MapTypeInfo {
                         package: package.clone(),
                         name: name.clone(),
-                        key_type: TypeName::from_str(key_type),
-                        value_type: TypeName::from_str(value_type),
+                        key_type: TypeName::parse(key_type),
+                        value_type: TypeName::parse(value_type),
                     };
                     all_types.insert(name.clone(), TypeInfo::Map(type_info));
                 }

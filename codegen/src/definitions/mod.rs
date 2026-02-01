@@ -5,7 +5,7 @@ pub struct DefinitionConfig {
 
 #[derive(Debug, Clone, PartialEq, serde::Serialize, serde::Deserialize)]
 pub struct TypeConfig {
-    pub object_enum_style: Option<crate::definitions::ObjectEnumStyle>,
+    pub union_style: Option<crate::definitions::UnionStyle>,
 }
 
 #[derive(Debug, Clone, PartialEq, serde::Serialize, serde::Deserialize)]
@@ -36,7 +36,7 @@ pub enum CustomType {
         name: String,
         values: crate::definitions::EnumValueList,
     },
-    ObjectEnum {
+    Union {
         name: String,
         type_tag: String,
         values: crate::definitions::EnumValueList,
@@ -55,7 +55,7 @@ pub enum CustomType {
 pub type CustomTypeList = Vec<crate::definitions::CustomType>;
 
 #[derive(Debug, Clone, PartialEq, serde::Serialize, serde::Deserialize)]
-pub enum ObjectEnumStyle {
+pub enum UnionStyle {
     Inline,
     Extern,
 }

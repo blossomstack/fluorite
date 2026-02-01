@@ -1,10 +1,10 @@
 use crate::{
     code_gen::abi::{
         CodeGenContext, EnumTypeInfo, EnumWriter, ListTypeInfo, ListWriter, MapTypeInfo, MapWriter,
-        ObjectEnumTypeInfo, ObjectEnumValue, ObjectEnumWriter, ObjectField, ObjectTypeInfo,
-        ObjectWriter, TypeInfo,
+        ObjectField, ObjectTypeInfo, ObjectWriter, TypeInfo, UnionTypeInfo, UnionValue,
+        UnionWriter,
     },
-    definitions::ObjectEnumStyle,
+    definitions::UnionStyle,
 };
 
 use super::RustContext;
@@ -52,30 +52,29 @@ impl EnumWriter<RustContext> for RustTypeWriter {
     }
 }
 
-impl ObjectEnumWriter<RustContext> for RustTypeWriter {
-    fn write_object_enum(
+impl UnionWriter<RustContext> for RustTypeWriter {
+    fn write_union(
         &self,
         writer: &mut dyn Write,
-        object_enum_type_info: &ObjectEnumTypeInfo,
+        union_type_info: &UnionTypeInfo,
         context: &RustContext,
     ) -> anyhow::Result<()> {
-        let enum_style = object_enum_type_info
+        let enum_style = union_type_info
             .configs
             .clone()
-            .and_then(|c| c.object_enum_style)
-            .unwrap_or(ObjectEnumStyle::Inline);
+            .and_then(|c| c.union_style)
+            .unwrap_or(UnionStyle::Inline);
         writer.write_all(format!("{}\n", context.type_descriptions()).as_bytes())?;
-        writer.write_all(
-            format!("#[serde(tag = \"{}\")]\n", object_enum_type_info.type_tag).as_bytes(),
-        )?;
-        writer.write_all(format!("pub enum {} {{\n", object_enum_type_info.name).as_bytes())?;
+        writer
+            .write_all(format!("#[serde(tag = \"{}\")]\n", union_type_info.type_tag).as_bytes())?;
+        writer.write_all(format!("pub enum {} {{\n", union_type_info.name).as_bytes())?;
 
-        for value in object_enum_type_info.values.iter() {
+        for value in union_type_info.values.iter() {
             match value {
-                ObjectEnumValue::Simple(simple) => {
+                UnionValue::Simple(simple) => {
                     writer.write_all(format!("  {},\n", simple).as_bytes())?;
                 }
-                ObjectEnumValue::CustomType(type_name) if enum_style == ObjectEnumStyle::Extern => {
+                UnionValue::CustomType(type_name) if enum_style == UnionStyle::Extern => {
                     match context.type_dict().get(type_name) {
                         Some(t) => {
                             writer.write_all(
@@ -91,23 +90,21 @@ impl ObjectEnumWriter<RustContext> for RustTypeWriter {
                         }
                     }
                 }
-                ObjectEnumValue::CustomType(type_name) => {
-                    match context.type_dict().get(type_name) {
-                        Some(TypeInfo::Object(type_info)) => {
-                            writer.write_all(format!("  {} {{\n", type_info.name).as_bytes())?;
-                            for field in &type_info.fields {
-                                self.write_object_field(writer, field, type_info, context)?;
-                            }
-                            writer.write_all("  },\n".as_bytes())?;
+                UnionValue::CustomType(type_name) => match context.type_dict().get(type_name) {
+                    Some(TypeInfo::Object(type_info)) => {
+                        writer.write_all(format!("  {} {{\n", type_info.name).as_bytes())?;
+                        for field in &type_info.fields {
+                            self.write_object_field(writer, field, type_info, context)?;
                         }
-                        _ => {
-                            return Err(anyhow!(
-                                "Enum cannot be nested within enum object: {}",
-                                type_name
-                            ));
-                        }
+                        writer.write_all("  },\n".as_bytes())?;
                     }
-                }
+                    _ => {
+                        return Err(anyhow!(
+                            "Enum cannot be nested within enum object: {}",
+                            type_name
+                        ));
+                    }
+                },
             }
         }
         writer.write_all("}".as_bytes())?;
@@ -176,7 +173,7 @@ impl RustTypeWriter {
         };
         match &field.config.as_ref().and_then(|c| c.rename.clone()) {
             Some(rename) => {
-                if type_info.is_object_enum_value {
+                if type_info.is_union_value {
                     writer.write_all(
                         format!("    #[serde(rename = \"{}\")]\n", field.name).as_bytes(),
                     )?;
@@ -190,7 +187,7 @@ impl RustTypeWriter {
                 }
             }
             None => {
-                if type_info.is_object_enum_value {
+                if type_info.is_union_value {
                     writer.write_all(
                         format!("    {}: {},\n", field.name, type_to_write).as_bytes(),
                     )?;

@@ -12,10 +12,10 @@ repository.workspace = true
 exclude.workspace = true
 
 [dependencies]
-serde = {version = "1.0.193", features =["serde_derive"]}
-fluorite = {path = "../../runtime/"}
-serde_json = "1.0.108"
-derive-new = "0.6"
+serde = { version = "1.0", features = ["serde_derive"] }
+fluorite = { path = "../../runtime/" }
+serde_json = "1.0"
+derive-new = "0.7"
 
 [build-dependencies]
-fluorite_codegen =  {path = "../../codegen"}
+fluorite_codegen = { path = "../../codegen" }

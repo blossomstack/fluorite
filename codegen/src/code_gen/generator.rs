@@ -18,7 +18,7 @@ impl<C: CodeGenContext> CodeGenerator<C> {
 
     pub fn generate(&self, definitions: &Vec<Definition>) -> anyhow::Result<()> {
         let pre_processor = self.config.get_pre_processor();
-        let type_dict = build_type_dict(definitions, &pre_processor)?;
+        let type_dict = build_type_dict(definitions, pre_processor.as_ref())?;
         let context = pre_processor.process(type_dict)?;
 
         // group types by packages for next code gen
@@ -33,7 +33,7 @@ impl<C: CodeGenContext> CodeGenerator<C> {
             if let Some(package_writer) = self.config.get_package_writer() {
                 package_writer.write_package(package, &types, &context)?;
             }
-            for type_info in types.into_iter().filter(|t| !t.is_object_enum_value()) {
+            for type_info in types.into_iter().filter(|t| !t.is_union_value()) {
                 self.gen_code_for(type_info, &context)?;
             }
         }
@@ -52,13 +52,9 @@ impl<C: CodeGenContext> CodeGenerator<C> {
                 let enum_writer = self.config.get_enum_writer();
                 enum_writer.write_enum(&mut writer, enum_type_info, context)?;
             }
-            TypeInfo::ObjectEnum(object_enum_type_info) => {
-                let object_enum_writer = self.config.get_object_enum_writer();
-                object_enum_writer.write_object_enum(
-                    &mut writer,
-                    object_enum_type_info,
-                    context,
-                )?;
+            TypeInfo::Union(union_type_info) => {
+                let union_writer = self.config.get_union_writer();
+                union_writer.write_union(&mut writer, union_type_info, context)?;
             }
             TypeInfo::List(list_type_info) => {
                 let list_writer = self.config.get_list_writer();

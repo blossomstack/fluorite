@@ -1,9 +1,23 @@
+#![allow(dead_code)]
+#![deny(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
+#![deny(clippy::wildcard_enum_match_arm)]
+#![cfg_attr(
+    test,
+    allow(
+        clippy::unwrap_used,
+        clippy::expect_used,
+        clippy::panic,
+        clippy::wildcard_enum_match_arm,
+        deprecated
+    )
+)]
+
 mod demo {
     include!(concat!(env!("OUT_DIR"), "/demo/mod.rs"));
 }
 use demo::{Gender, User};
 
-use crate::demo::{AnObject, TestObjectEnum};
+use crate::demo::{AnObject, TestUnion};
 fn main() {
     let first_name = "f".to_string();
     let last_name = "l".to_string();
@@ -23,6 +37,6 @@ fn main() {
     };
     println!("user: {:?}", user);
 
-    let o = TestObjectEnum::AnObject(AnObject::new("test".to_owned()));
+    let o = TestUnion::AnObject(AnObject::new("test".to_owned()));
     println!("object enum: {:?}", o);
 }
