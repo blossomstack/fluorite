@@ -151,3 +151,40 @@ RustOptions::new(output_dir)
 2. Create `codegen/src/code_gen/<lang>/template_generator.rs`
 3. Implement type formatting and FQN resolution for the language
 4. Add CLI subcommand
+
+## TypeScript Code Generation
+
+TypeScript generation is available via the `ts` subcommand:
+
+```bash
+# Generate TypeScript from YAML schemas
+cargo run --package fluorite_codegen --bin fluorite -- ts \
+  --inputs schemas/orders.yaml schemas/users.yaml \
+  --output ./src/generated \
+  --single-file false
+
+# Or via npm package (after publishing)
+npx @zhxiaogg/fluorite-cli ts --inputs ./schemas/*.yaml --output ./src/generated
+```
+
+### TypeScript-Specific Files
+
+- `codegen/src/code_gen/ts/` - TypeScript generator implementation
+- `codegen/templates/ts/` - Askama templates for TypeScript output
+- `npm/fluorite-cli/` - npm package for easy integration
+
+### Type Mapping (YAML → TypeScript)
+
+| YAML Type | TypeScript |
+|-----------|-----------|
+| String, DateTime | `string` |
+| Bool | `boolean` |
+| Int32, Int64, UInt32, UInt64, Float32, Float64 | `number` |
+| Any | `unknown` |
+| List<T> | `T[]` |
+| Map<K, V> | `Record<K, V>` |
+| Optional field | `field?: Type` |
+
+### Design Document
+
+See `docs/plans/2026-02-01-typescript-codegen-design.md` for full design details.

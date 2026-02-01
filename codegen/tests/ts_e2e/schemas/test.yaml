@@ -1,0 +1,63 @@
+configs:
+  rust_package: "test.types"
+types:
+  - name: User
+    type: Object
+    fields:
+      - name: id
+        type: UInt64
+      - name: name
+        type: String
+      - name: email
+        type: String
+        optional: true
+      - name: status
+        type: UserStatus
+      - name: metadata
+        type: Any
+
+  - name: UserStatus
+    type: Enum
+    values:
+      - Active
+      - Inactive
+      - Pending
+
+  - name: Event
+    type: Union
+    type_tag: eventType
+    values:
+      - UserCreated
+      - UserUpdated
+      - UserDeleted
+
+  - name: UserCreated
+    type: Object
+    fields:
+      - name: user
+        type: User
+      - name: timestamp
+        type: DateTime
+
+  - name: UserUpdated
+    type: Object
+    fields:
+      - name: user
+        type: User
+      - name: changes
+        type: String
+
+  - name: UserDeleted
+    type: Object
+    fields:
+      - name: userId
+        type: UInt64
+
+  - name: UserList
+    type: List
+    item_type: User
+
+  - name: UserMap
+    type: Map
+    key_type: String
+    value_type: User

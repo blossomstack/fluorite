@@ -65,3 +65,22 @@ pub fn to_snake_case(s: &str) -> String {
 
     snake_case
 }
+
+pub fn to_camel_case(s: &str) -> String {
+    let mut result = String::new();
+    let mut capitalize_next = false;
+
+    for (i, c) in s.chars().enumerate() {
+        if c == '_' || c == '-' {
+            capitalize_next = true;
+        } else if capitalize_next {
+            result.push(c.to_ascii_uppercase());
+            capitalize_next = false;
+        } else if i == 0 {
+            result.push(c.to_ascii_lowercase());
+        } else {
+            result.push(c);
+        }
+    }
+    result
+}

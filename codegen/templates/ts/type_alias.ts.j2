@@ -1,0 +1,7 @@
+{%- if !imports.is_empty() %}
+{%- for import in imports %}
+import { {{ import.name }} } from '{{ import.path }}';
+{%- endfor %}
+
+{%- endif %}
+export type {{ name }} = {{ target_type|safe }};

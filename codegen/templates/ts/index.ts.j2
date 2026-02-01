@@ -1,0 +1,3 @@
+{%- for module in modules %}
+export * from './{{ module.file_name }}';
+{%- endfor %}

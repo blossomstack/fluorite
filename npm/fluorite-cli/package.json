@@ -1,0 +1,29 @@
+{
+  "name": "@zhxiaogg/fluorite-cli",
+  "version": "0.1.0",
+  "description": "Code generator from YAML schema definitions - generates Rust and TypeScript",
+  "bin": {
+    "fluorite": "./bin/fluorite.js"
+  },
+  "scripts": {
+    "postinstall": "node install.js"
+  },
+  "keywords": [
+    "codegen",
+    "typescript",
+    "rust",
+    "schema",
+    "yaml"
+  ],
+  "author": "shawn",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/blossomstack/fluorite.git"
+  },
+  "os": ["darwin", "linux", "win32"],
+  "cpu": ["x64", "arm64"],
+  "engines": {
+    "node": ">=16.0.0"
+  }
+}

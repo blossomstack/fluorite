@@ -1,0 +1,15 @@
+{
+  "name": "fluorite-ts-e2e-test",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "generate": "cd ../../.. && cargo run --package fluorite_codegen --bin fluorite -- ts --inputs codegen/tests/ts_e2e/schemas/test.yaml --output codegen/tests/ts_e2e/generated",
+    "generate:single": "cd ../../.. && cargo run --package fluorite_codegen --bin fluorite -- ts --inputs codegen/tests/ts_e2e/schemas/test.yaml --output codegen/tests/ts_e2e/generated --single-file",
+    "typecheck": "tsc --noEmit",
+    "test": "npm run generate && npm run typecheck",
+    "test:single": "npm run generate:single && npm run typecheck"
+  },
+  "devDependencies": {
+    "typescript": "^5.0.0"
+  }
+}
