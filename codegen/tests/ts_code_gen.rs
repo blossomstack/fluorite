@@ -4,7 +4,7 @@ use std::sync::Arc;
 use fluorite_codegen::{
     code_gen::{
         fs::MemoryFileSystem,
-        ts::{TypeScriptOptions, TsTemplateGenerator},
+        ts::{TsTemplateGenerator, TypeScriptOptions},
     },
     definitions::Definition,
 };
@@ -47,11 +47,23 @@ fn test_ts_generates_interface() -> anyhow::Result<()> {
     generator.generate(&[d1])?;
 
     let content = fs.get_string("/output/protocols/users/user.ts").unwrap();
-    assert!(content.contains("export interface User"), "Should have User interface");
-    assert!(content.contains("firstName: string"), "Should have firstName field");
-    assert!(content.contains("lastName: string"), "Should have lastName field");
+    assert!(
+        content.contains("export interface User"),
+        "Should have User interface"
+    );
+    assert!(
+        content.contains("firstName: string"),
+        "Should have firstName field"
+    );
+    assert!(
+        content.contains("lastName: string"),
+        "Should have lastName field"
+    );
     assert!(content.contains("age: number"), "Should have age as number");
-    assert!(content.contains("active: boolean"), "Should have active as boolean");
+    assert!(
+        content.contains("active: boolean"),
+        "Should have active as boolean"
+    );
 
     Ok(())
 }
@@ -66,9 +78,18 @@ fn test_ts_generates_enum() -> anyhow::Result<()> {
     generator.generate(&[d1])?;
 
     let content = fs.get_string("/output/protocols/users/gender.ts").unwrap();
-    assert!(content.contains("export enum Gender"), "Should have Gender enum");
-    assert!(content.contains("Male = \"Male\""), "Should have Male variant");
-    assert!(content.contains("Female = \"Female\""), "Should have Female variant");
+    assert!(
+        content.contains("export enum Gender"),
+        "Should have Gender enum"
+    );
+    assert!(
+        content.contains("Male = \"Male\""),
+        "Should have Male variant"
+    );
+    assert!(
+        content.contains("Female = \"Female\""),
+        "Should have Female variant"
+    );
 
     Ok(())
 }
@@ -83,9 +104,17 @@ fn test_ts_generates_discriminated_union() -> anyhow::Result<()> {
     let generator = TsTemplateGenerator::new(options, fs.clone());
     generator.generate(&[d1, d2])?;
 
-    let content = fs.get_string("/output/protocols/orders/address.ts").unwrap();
-    assert!(content.contains("export type Address"), "Should have Address type");
-    assert!(content.contains("type: \""), "Should have discriminant field");
+    let content = fs
+        .get_string("/output/protocols/orders/address.ts")
+        .unwrap();
+    assert!(
+        content.contains("export type Address"),
+        "Should have Address type"
+    );
+    assert!(
+        content.contains("type: \""),
+        "Should have discriminant field"
+    );
 
     Ok(())
 }
@@ -100,13 +129,23 @@ fn test_ts_generates_type_alias() -> anyhow::Result<()> {
     let generator = TsTemplateGenerator::new(options, fs.clone());
     generator.generate(&[d1, d2])?;
 
-    let order_list_content = fs.get_string("/output/protocols/orders/orderList.ts").unwrap();
-    assert!(order_list_content.contains("export type OrderList = Order[]"),
-        "Should have list alias. Got: {}", order_list_content);
+    let order_list_content = fs
+        .get_string("/output/protocols/orders/orderList.ts")
+        .unwrap();
+    assert!(
+        order_list_content.contains("export type OrderList = Order[]"),
+        "Should have list alias. Got: {}",
+        order_list_content
+    );
 
-    let order_map_content = fs.get_string("/output/protocols/orders/orderMap.ts").unwrap();
-    assert!(order_map_content.contains("export type OrderMap = Record<string, Order>"),
-        "Should have map alias. Got: {}", order_map_content);
+    let order_map_content = fs
+        .get_string("/output/protocols/orders/orderMap.ts")
+        .unwrap();
+    assert!(
+        order_map_content.contains("export type OrderMap = Record<string, Order>"),
+        "Should have map alias. Got: {}",
+        order_map_content
+    );
 
     Ok(())
 }
@@ -122,12 +161,24 @@ fn test_ts_single_file_mode() -> anyhow::Result<()> {
 
     // Should only have index.ts
     let files = fs.files();
-    assert!(files.contains_key("/output/protocols/users/index.ts"), "Should have index.ts");
-    assert!(!files.contains_key("/output/protocols/users/user.ts"), "Should NOT have user.ts");
+    assert!(
+        files.contains_key("/output/protocols/users/index.ts"),
+        "Should have index.ts"
+    );
+    assert!(
+        !files.contains_key("/output/protocols/users/user.ts"),
+        "Should NOT have user.ts"
+    );
 
     let content = fs.get_string("/output/protocols/users/index.ts").unwrap();
-    assert!(content.contains("export interface User"), "Should have User in index.ts");
-    assert!(content.contains("export enum Gender"), "Should have Gender in index.ts");
+    assert!(
+        content.contains("export interface User"),
+        "Should have User in index.ts"
+    );
+    assert!(
+        content.contains("export enum Gender"),
+        "Should have Gender in index.ts"
+    );
 
     Ok(())
 }
@@ -142,8 +193,11 @@ fn test_ts_readonly_option() -> anyhow::Result<()> {
     generator.generate(&[d1])?;
 
     let content = fs.get_string("/output/protocols/users/user.ts").unwrap();
-    assert!(content.contains("readonly firstName: string"),
-        "Should have readonly fields. Got: {}", content);
+    assert!(
+        content.contains("readonly firstName: string"),
+        "Should have readonly fields. Got: {}",
+        content
+    );
 
     Ok(())
 }
@@ -159,9 +213,18 @@ fn test_ts_any_type_option() -> anyhow::Result<()> {
     generator.generate(&[d1, d2])?;
 
     // PostCode has an 'instruction' field of type Any, which is inlined into Address union
-    let content = fs.get_string("/output/protocols/orders/address.ts").unwrap();
-    assert!(content.contains("instruction: any"), "Should use custom any type. Got: {}", content);
-    assert!(!content.contains("instruction: unknown"), "Should NOT use unknown");
+    let content = fs
+        .get_string("/output/protocols/orders/address.ts")
+        .unwrap();
+    assert!(
+        content.contains("instruction: any"),
+        "Should use custom any type. Got: {}",
+        content
+    );
+    assert!(
+        !content.contains("instruction: unknown"),
+        "Should NOT use unknown"
+    );
 
     Ok(())
 }
@@ -178,8 +241,11 @@ fn test_ts_optional_fields() -> anyhow::Result<()> {
 
     let content = fs.get_string("/output/protocols/orders/order.ts").unwrap();
     // shipping field is optional
-    assert!(content.contains("shipping?:"),
-        "Should have optional shipping field. Got: {}", content);
+    assert!(
+        content.contains("shipping?:"),
+        "Should have optional shipping field. Got: {}",
+        content
+    );
 
     Ok(())
 }
@@ -194,8 +260,14 @@ fn test_ts_index_file_exports() -> anyhow::Result<()> {
     generator.generate(&[d1])?;
 
     let content = fs.get_string("/output/protocols/users/index.ts").unwrap();
-    assert!(content.contains("export * from './user'"), "Should export user");
-    assert!(content.contains("export * from './gender'"), "Should export gender");
+    assert!(
+        content.contains("export * from './user'"),
+        "Should export user"
+    );
+    assert!(
+        content.contains("export * from './gender'"),
+        "Should export gender"
+    );
 
     Ok(())
 }

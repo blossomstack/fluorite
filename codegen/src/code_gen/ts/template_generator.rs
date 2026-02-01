@@ -49,11 +49,7 @@ impl TsTemplateGenerator {
         // Generate code for each package
         for (package_name, package) in &schema.packages {
             // Use override if provided, otherwise use the package name from schema
-            let output_package_name = self
-                .options
-                .package_name
-                .as_ref()
-                .unwrap_or(package_name);
+            let output_package_name = self.options.package_name.as_ref().unwrap_or(package_name);
             self.generate_package(output_package_name, &package.types, &schema)?;
         }
 
@@ -322,6 +318,7 @@ impl TsTemplateGenerator {
         }
     }
 
+    #[allow(clippy::only_used_in_recursion)]
     fn format_type(&self, field_type: &IRFieldType, schema: &IRSchema) -> Result<String> {
         match field_type {
             IRFieldType::Primitive(p) => Ok(self.format_primitive(*p)),
@@ -356,13 +353,13 @@ impl TsTemplateGenerator {
             IRPrimitive::Decimal => "string".to_string(),
             IRPrimitive::Bytes => "string".to_string(), // base64 encoded
             IRPrimitive::Url => "string".to_string(),
-            IRPrimitive::Timestamp => "number".to_string(),      // Unix epoch seconds
+            IRPrimitive::Timestamp => "number".to_string(), // Unix epoch seconds
             IRPrimitive::TimestampMillis => "number".to_string(), // Unix epoch milliseconds
-            IRPrimitive::DateTimeUtc => "string".to_string(),    // ISO 8601
-            IRPrimitive::DateTimeTz => "string".to_string(),     // ISO 8601 with timezone
-            IRPrimitive::Date => "string".to_string(),           // ISO 8601 date
-            IRPrimitive::Time => "string".to_string(),           // ISO 8601 time
-            IRPrimitive::Duration => "string".to_string(),       // ISO 8601 duration
+            IRPrimitive::DateTimeUtc => "string".to_string(), // ISO 8601
+            IRPrimitive::DateTimeTz => "string".to_string(), // ISO 8601 with timezone
+            IRPrimitive::Date => "string".to_string(),      // ISO 8601 date
+            IRPrimitive::Time => "string".to_string(),      // ISO 8601 time
+            IRPrimitive::Duration => "string".to_string(),  // ISO 8601 duration
         }
     }
 
@@ -428,7 +425,11 @@ impl TsTemplateGenerator {
         let mut referenced_types = std::collections::HashSet::new();
 
         for field in &s.fields {
-            self.collect_type_references(&field.field_type, package_type_names, &mut referenced_types);
+            self.collect_type_references(
+                &field.field_type,
+                package_type_names,
+                &mut referenced_types,
+            );
         }
 
         self.build_imports(referenced_types)
@@ -446,7 +447,11 @@ impl TsTemplateGenerator {
                 IRUnionVariant::Unit(_) => {}
                 IRUnionVariant::Inline(_, fields) => {
                     for field in fields {
-                        self.collect_type_references(&field.field_type, package_type_names, &mut referenced_types);
+                        self.collect_type_references(
+                            &field.field_type,
+                            package_type_names,
+                            &mut referenced_types,
+                        );
                     }
                 }
                 IRUnionVariant::Newtype(_, type_name) => {

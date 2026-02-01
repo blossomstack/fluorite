@@ -1,6 +1,6 @@
 mod options;
-pub mod templates;
 mod template_generator;
+pub mod templates;
 
 pub use options::*;
 pub use template_generator::*;

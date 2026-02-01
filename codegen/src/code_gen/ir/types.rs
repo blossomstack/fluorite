@@ -127,6 +127,7 @@ pub enum IRPrimitive {
     Float32,
     Float64,
     // Extended primitives
+    #[allow(clippy::upper_case_acronyms)]
     UUID,
     Decimal,
     Bytes,

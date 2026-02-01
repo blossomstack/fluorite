@@ -331,7 +331,7 @@ mod ir_field_tests {
             skip_if_default: false,
             flatten: false,
             deprecated: false,
-            };
+        };
         assert_eq!(field.code_name(), "first_name");
         assert_eq!(field.original_name(), "first_name");
         assert!(!field.needs_rename());
@@ -352,7 +352,7 @@ mod ir_field_tests {
             skip_if_default: false,
             flatten: false,
             deprecated: false,
-            };
+        };
         assert_eq!(field.code_name(), "order_type");
         assert_eq!(field.original_name(), "type");
         assert!(field.needs_rename());
@@ -373,7 +373,7 @@ mod ir_field_tests {
             skip_if_default: false,
             flatten: false,
             deprecated: false,
-            };
+        };
         assert!(field.is_optional);
         assert!(field.is_boxed);
         assert_eq!(field.doc, Some("Documentation".to_string()));
@@ -392,7 +392,7 @@ mod ir_type_tests {
             doc: None,
             rename_all: None,
             deny_unknown_fields: false,
-            });
+        });
         assert_eq!(ir_type.name(), "User");
         assert!(!ir_type.is_internal());
     }
@@ -406,7 +406,7 @@ mod ir_type_tests {
             doc: None,
             rename_all: None,
             deny_unknown_fields: false,
-            });
+        });
         assert_eq!(ir_type.name(), "PostCode");
         assert!(ir_type.is_internal());
     }
@@ -499,7 +499,7 @@ mod ir_builder_tests {
                 description: None,
                 name: "Test".to_string(),
                 values: vec!["A".to_string()],
-                }],
+            }],
         };
 
         let result = IRBuilder::new().build(&[def]);
@@ -523,7 +523,7 @@ mod ir_builder_tests {
                         configs: None,
                         description: None,
                         deprecated: None,
-                        },
+                    },
                     Field {
                         name: "b".to_string(),
                         field_type: "Bool".to_string(),
@@ -531,7 +531,7 @@ mod ir_builder_tests {
                         configs: None,
                         description: None,
                         deprecated: None,
-                        },
+                    },
                     Field {
                         name: "dt".to_string(),
                         field_type: "DateTime".to_string(),
@@ -539,7 +539,7 @@ mod ir_builder_tests {
                         configs: None,
                         description: None,
                         deprecated: None,
-                        },
+                    },
                     Field {
                         name: "u32".to_string(),
                         field_type: "UInt32".to_string(),
@@ -547,7 +547,7 @@ mod ir_builder_tests {
                         configs: None,
                         description: None,
                         deprecated: None,
-                        },
+                    },
                     Field {
                         name: "u64".to_string(),
                         field_type: "UInt64".to_string(),
@@ -555,7 +555,7 @@ mod ir_builder_tests {
                         configs: None,
                         description: None,
                         deprecated: None,
-                        },
+                    },
                     Field {
                         name: "i32".to_string(),
                         field_type: "Int32".to_string(),
@@ -563,7 +563,7 @@ mod ir_builder_tests {
                         configs: None,
                         description: None,
                         deprecated: None,
-                        },
+                    },
                     Field {
                         name: "i64".to_string(),
                         field_type: "Int64".to_string(),
@@ -571,7 +571,7 @@ mod ir_builder_tests {
                         configs: None,
                         description: None,
                         deprecated: None,
-                        },
+                    },
                     Field {
                         name: "f32".to_string(),
                         field_type: "Float32".to_string(),
@@ -579,7 +579,7 @@ mod ir_builder_tests {
                         configs: None,
                         description: None,
                         deprecated: None,
-                        },
+                    },
                     Field {
                         name: "f64".to_string(),
                         field_type: "Float64".to_string(),
@@ -587,7 +587,7 @@ mod ir_builder_tests {
                         configs: None,
                         description: None,
                         deprecated: None,
-                        },
+                    },
                     Field {
                         name: "any".to_string(),
                         field_type: "Any".to_string(),
@@ -595,7 +595,7 @@ mod ir_builder_tests {
                         configs: None,
                         description: None,
                         deprecated: None,
-                        },
+                    },
                 ],
             }],
         );
@@ -639,7 +639,7 @@ mod ir_builder_tests {
                         alias: None,
                         default: None,
                         rust: None,
-                        }),
+                    }),
                     description: None,
                     deprecated: None,
                 }],
@@ -667,7 +667,7 @@ mod ir_builder_tests {
                 description: None,
                 name: "StringList".to_string(),
                 item_type: "String".to_string(),
-                }],
+            }],
         );
 
         let schema = IRBuilder::new().build(&[def]).unwrap();
@@ -694,7 +694,7 @@ mod ir_builder_tests {
                 name: "StringMap".to_string(),
                 key_type: "String".to_string(),
                 value_type: "Int32".to_string(),
-                }],
+            }],
         );
 
         let schema = IRBuilder::new().build(&[def]).unwrap();
@@ -725,7 +725,7 @@ mod ir_builder_tests {
                     description: None,
                     name: "VariantA".to_string(),
                     fields: vec![],
-                    },
+                },
                 CustomType::Union {
                     description: None,
                     name: "MyUnion".to_string(),
@@ -735,7 +735,7 @@ mod ir_builder_tests {
                         union_style: Some(UnionStyle::Extern),
                         rename_all: None,
                         rust: None,
-                        }),
+                    }),
                 },
             ],
         );
@@ -788,7 +788,7 @@ mod validator_tests {
                         skip_if_default: false,
                         flatten: false,
                         deprecated: false,
-                        }],
+                    }],
                     is_union_variant: false,
                     doc: None,
                     rename_all: None,
@@ -829,7 +829,7 @@ mod validator_tests {
                     skip_if_default: false,
                     flatten: false,
                     deprecated: false,
-                    }],
+                }],
                 is_union_variant: false,
                 doc: None,
                 rename_all: None,
@@ -863,7 +863,7 @@ mod validator_tests {
                     doc: None,
                     rename_all: None,
                     deny_unknown_fields: false,
-                    }),
+                }),
                 IRType::Struct(IRStruct {
                     name: "User".to_string(),
                     fields: vec![],
@@ -871,7 +871,7 @@ mod validator_tests {
                     doc: None,
                     rename_all: None,
                     deny_unknown_fields: false,
-                    }),
+                }),
             ],
         )]);
 
@@ -1048,7 +1048,7 @@ mod validator_tests {
                     doc: None,
                     rename_all: None,
                     deny_unknown_fields: false,
-                    })],
+                })],
             ),
             (
                 "package.b".to_string(),
@@ -1067,7 +1067,7 @@ mod validator_tests {
                         skip_if_default: false,
                         flatten: false,
                         deprecated: false,
-                        }],
+                    }],
                     is_union_variant: false,
                     doc: None,
                     rename_all: None,
@@ -1104,7 +1104,7 @@ mod validator_tests {
                         skip_if_default: false,
                         flatten: false,
                         deprecated: false,
-                        },
+                    },
                     IRField {
                         name: "any".to_string(),
                         field_type: IRFieldType::Any,
@@ -1118,7 +1118,7 @@ mod validator_tests {
                         skip_if_default: false,
                         flatten: false,
                         deprecated: false,
-                        },
+                    },
                 ],
                 is_union_variant: false,
                 doc: None,

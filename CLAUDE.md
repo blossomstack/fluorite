@@ -23,6 +23,22 @@ cargo test --package fluorite            # runtime library
 cargo run --package fluorite_codegen --bin fluorite -- rust --inputs file.yaml --output ./src --single-file true
 ```
 
+## Code Quality Verification
+
+**IMPORTANT:** Always verify code changes by running the same checks as GitHub Actions before considering work complete. Use the Makefile targets:
+
+```bash
+# Run all CI checks (format check, lint, test)
+make all
+
+# Or run individual checks:
+make fmt-check    # Format check
+make lint         # Clippy linting
+make test         # Run all tests
+```
+
+All checks must pass before submitting changes.
+
 ## Workspace Structure
 
 This is a Cargo workspace with three members:

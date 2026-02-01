@@ -100,7 +100,12 @@ impl IRBuilder {
 
     fn convert_type(&self, custom_type: &CustomType) -> Result<IRType> {
         match custom_type {
-            CustomType::Object { name, fields, configs, description } => {
+            CustomType::Object {
+                name,
+                fields,
+                configs,
+                description,
+            } => {
                 let is_union_variant = self.union_variant_names.contains(name);
                 let ir_fields = fields.iter().map(|f| self.convert_field(f)).collect();
 
@@ -122,7 +127,11 @@ impl IRBuilder {
                 }))
             }
 
-            CustomType::Enum { name, values, description } => Ok(IRType::Enum(IREnum {
+            CustomType::Enum {
+                name,
+                values,
+                description,
+            } => Ok(IRType::Enum(IREnum {
                 name: name.clone(),
                 variants: values.clone(),
                 doc: description.clone(),
@@ -174,7 +183,11 @@ impl IRBuilder {
                 }))
             }
 
-            CustomType::List { name, item_type, description } => {
+            CustomType::List {
+                name,
+                item_type,
+                description,
+            } => {
                 let item = self.convert_field_type(item_type);
                 Ok(IRType::TypeAlias(IRTypeAlias {
                     name: name.clone(),
@@ -204,24 +217,16 @@ impl IRBuilder {
         let field_type = self.convert_field_type(&field.field_type);
         let configs = field.configs.as_ref();
 
-        let is_boxed = configs
-            .and_then(|c| c.rust_type_wrapper.as_ref())
-            .is_some();
+        let is_boxed = configs.and_then(|c| c.rust_type_wrapper.as_ref()).is_some();
         let rename = configs.and_then(|c| c.rename.clone());
         let alias = configs.and_then(|c| c.alias.clone()).unwrap_or_default();
         let default = configs.and_then(|c| c.default.clone());
 
         // Extract Rust-specific config
         let rust_config = configs.and_then(|c| c.rust.as_ref());
-        let skip_if_none = rust_config
-            .and_then(|r| r.skip_if_none)
-            .unwrap_or(false);
-        let skip_if_default = rust_config
-            .and_then(|r| r.skip_if_default)
-            .unwrap_or(false);
-        let flatten = rust_config
-            .and_then(|r| r.flatten)
-            .unwrap_or(false);
+        let skip_if_none = rust_config.and_then(|r| r.skip_if_none).unwrap_or(false);
+        let skip_if_default = rust_config.and_then(|r| r.skip_if_default).unwrap_or(false);
+        let flatten = rust_config.and_then(|r| r.flatten).unwrap_or(false);
 
         IRField {
             name: field.name.clone(),
