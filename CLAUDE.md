@@ -171,6 +171,108 @@ RustOptions::new(output_dir)
 3. Implement type formatting and FQN resolution for the language
 4. Add CLI subcommand
 
+## Fluorite IDL (.fl files)
+
+Fluorite now supports a native IDL format with Rust-like syntax as an alternative to YAML.
+
+### IDL Syntax Example
+
+```rust
+/// User management types
+package users;
+
+use orders::Order;
+
+/// Represents a user in the system
+struct User {
+    /// Unique identifier
+    id: Uuid,
+    /// User's name
+    name: String,
+    /// Optional email
+    email: Option<String>,
+    /// Account status
+    status: UserStatus,
+}
+
+enum UserStatus {
+    Active,
+    Inactive,
+}
+
+union UserEvent {
+    Created(User),
+    Deleted(Uuid),
+}
+
+type UserList = Vec<User>;
+```
+
+### IDL Features
+
+- **Package declaration**: `package name;`
+- **Imports**: `use path::Type;`
+- **Structs**: `struct Name { fields }`
+- **Enums**: `enum Name { Variants }`
+- **Unions**: Tagged unions with variant types
+- **Type aliases**: `type Name = Vec<T>;`
+- **Doc comments**: `/// Description`
+- **Attributes**: `#[rename = "value"]`
+- **Generic types**: `Option<T>`, `Vec<T>`, `Map<K, V>`
+
+### Type Mapping (IDL → IR)
+
+| IDL Type | IR Primitive |
+|----------|-------------|
+| `String` | `String` |
+| `bool` | `Bool` |
+| `i32` | `Int32` |
+| `i64` | `Int64` |
+| `u32` | `UInt32` |
+| `u64` | `UInt64` |
+| `f32` | `Float32` |
+| `f64` | `Float64` |
+| `Uuid` | `UUID` |
+| `Decimal` | `Decimal` |
+| `Bytes` | `Bytes` |
+| `Url` | `Url` |
+| `DateTime` | `DateTime` |
+| `DateTimeUtc` | `DateTimeUtc` |
+| `DateTimeTz` | `DateTimeTz` |
+| `Date` | `Date` |
+| `Time` | `Time` |
+| `Duration` | `Duration` |
+| `Timestamp` | `Timestamp` |
+| `TimestampMillis` | `TimestampMillis` |
+| `Any` | `Any` |
+
+### Using .fl Files with CLI
+
+```bash
+# Generate Rust from .fl files
+cargo run --package fluorite_codegen --bin fluorite -- rust \
+  --inputs examples/users.fl examples/orders.fl \
+  --output ./src/generated
+
+# Generate TypeScript from .fl files
+cargo run --package fluorite_codegen --bin fluorite -- ts \
+  --inputs examples/users.fl \
+  --output ./src/generated
+```
+
+### IDL Module Structure
+
+- `codegen/src/idl/lexer.rs` - Tokenizer using `logos`
+- `codegen/src/idl/parser.rs` - Parser using `chumsky`
+- `codegen/src/idl/ast.rs` - AST type definitions
+- `codegen/src/idl/ast_to_ir.rs` - AST to IR converter
+- `codegen/src/idl/mod.rs` - Public API (`parse_string`, `parse_file`, `parse_to_ir`)
+
+### Example Files
+
+- `examples/users.fl` - User management types
+- `examples/orders.fl` - Order management types with imports
+
 ## TypeScript Code Generation
 
 TypeScript generation is available via the `ts` subcommand:

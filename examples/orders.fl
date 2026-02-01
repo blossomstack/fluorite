@@ -1,0 +1,71 @@
+/// Order management types
+package orders;
+
+use users::User;
+
+/// Represents a customer order
+struct Order {
+    /// Unique order identifier
+    id: Uuid,
+    /// Reference to the user who placed the order
+    user_id: Uuid,
+    /// Items in this order
+    items: Vec<OrderItem>,
+    /// Total order amount
+    total: Decimal,
+    /// Order status
+    status: OrderStatus,
+    /// Shipping address
+    shipping_address: Address,
+    /// When the order was placed
+    created_at: DateTime,
+    /// Optional tracking number
+    tracking_number: Option<String>,
+}
+
+/// An item within an order
+struct OrderItem {
+    /// Product identifier
+    product_id: Uuid,
+    /// Product name
+    name: String,
+    /// Quantity ordered
+    quantity: u32,
+    /// Price per unit
+    unit_price: Decimal,
+}
+
+/// Shipping address
+struct Address {
+    /// Street address line 1
+    street1: String,
+    /// Street address line 2 (optional)
+    street2: Option<String>,
+    /// City
+    city: String,
+    /// State or province
+    state: String,
+    /// Postal code
+    postal_code: String,
+    /// Country code
+    country: String,
+}
+
+/// Possible order statuses
+enum OrderStatus {
+    Pending,
+    Confirmed,
+    Shipped,
+    Delivered,
+    Cancelled,
+}
+
+/// Event types for order lifecycle
+union OrderEvent {
+    Created(Order),
+    Updated(Order),
+    Cancelled(Order),
+}
+
+/// Map of order IDs to orders
+type OrderMap = Map<String, Order>;

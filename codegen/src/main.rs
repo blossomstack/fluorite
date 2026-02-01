@@ -13,16 +13,19 @@
 )]
 
 use std::fs;
+use std::path::Path;
 use std::sync::Arc;
 
 use clap::{Parser, Subcommand};
 
 use code_gen::fs::RealFileSystem;
+use code_gen::ir::IRSchema;
 use code_gen::rust::{RustOptions, RustTemplateGenerator, Visibility};
 use definitions::Definition;
 
 mod code_gen;
 mod definitions;
+mod idl;
 mod utils;
 
 #[derive(Parser)]
@@ -112,15 +115,8 @@ fn main() -> anyhow::Result<()> {
             generate_new,
             visibility,
         } => {
-            // Parse definitions
-            let definitions: Vec<Definition> = inputs
-                .iter()
-                .map(|path| {
-                    let content = fs::read_to_string(path)?;
-                    let def: Definition = serde_yaml::from_str(&content)?;
-                    Ok(def)
-                })
-                .collect::<anyhow::Result<Vec<_>>>()?;
+            // Load inputs (YAML or .fl files)
+            let (definitions, ir_schema) = load_inputs(&inputs)?;
 
             // Build options
             let mut options = RustOptions::new(output)
@@ -162,7 +158,12 @@ fn main() -> anyhow::Result<()> {
             // Generate
             let fs = Arc::new(RealFileSystem::new());
             let generator = RustTemplateGenerator::new(options, fs);
-            generator.generate(&definitions)?;
+
+            if let Some(schema) = ir_schema {
+                generator.generate_from_schema(&schema)?;
+            } else {
+                generator.generate(&definitions)?;
+            }
 
             println!("Code generation complete!");
         }
@@ -175,15 +176,8 @@ fn main() -> anyhow::Result<()> {
             readonly,
             package_name,
         } => {
-            // Parse definitions
-            let definitions: Vec<Definition> = inputs
-                .iter()
-                .map(|path| {
-                    let content = fs::read_to_string(path)?;
-                    let def: Definition = serde_yaml::from_str(&content)?;
-                    Ok(def)
-                })
-                .collect::<anyhow::Result<Vec<_>>>()?;
+            // Load inputs (YAML or .fl files)
+            let (definitions, ir_schema) = load_inputs(&inputs)?;
 
             // Build options
             let mut options = code_gen::ts::TypeScriptOptions::new(output)
@@ -198,11 +192,42 @@ fn main() -> anyhow::Result<()> {
             // Generate
             let fs = Arc::new(RealFileSystem::new());
             let generator = code_gen::ts::TsTemplateGenerator::new(options, fs);
-            generator.generate(&definitions)?;
+
+            if let Some(schema) = ir_schema {
+                generator.generate_from_schema(&schema)?;
+            } else {
+                generator.generate(&definitions)?;
+            }
 
             println!("TypeScript code generation complete!");
         }
     }
 
     Ok(())
+}
+
+/// Load definitions from input files, detecting YAML or .fl format
+fn load_inputs(inputs: &[String]) -> anyhow::Result<(Vec<Definition>, Option<IRSchema>)> {
+    let mut yaml_defs: Vec<Definition> = Vec::new();
+    let mut fl_files: Vec<String> = Vec::new();
+
+    for path in inputs {
+        if path.ends_with(".fl") {
+            fl_files.push(path.clone());
+        } else {
+            // Assume YAML
+            let content = fs::read_to_string(path)?;
+            let def: Definition = serde_yaml::from_str(&content)?;
+            yaml_defs.push(def);
+        }
+    }
+
+    let ir_schema = if !fl_files.is_empty() {
+        let paths: Vec<&Path> = fl_files.iter().map(Path::new).collect();
+        Some(idl::parse_to_ir(&paths)?)
+    } else {
+        None
+    };
+
+    Ok((yaml_defs, ir_schema))
 }

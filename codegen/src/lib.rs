@@ -14,6 +14,7 @@
 
 pub mod code_gen;
 pub mod definitions;
+pub mod idl;
 
 mod utils;
 pub use utils::*;

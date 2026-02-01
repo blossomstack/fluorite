@@ -1,0 +1,28 @@
+/// User management types
+package users;
+
+/// Represents a user in the system
+struct User {
+    /// Unique identifier for the user
+    id: Uuid,
+    /// User's full name
+    name: String,
+    /// User's email address
+    email: String,
+    /// Optional age of the user
+    age: Option<u32>,
+    /// User's account status
+    status: UserStatus,
+    /// When the user was created
+    created_at: DateTime,
+}
+
+/// Possible statuses for a user account
+enum UserStatus {
+    Active,
+    Inactive,
+    Suspended,
+}
+
+/// List of users
+type UserList = Vec<User>;

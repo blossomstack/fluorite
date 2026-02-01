@@ -36,15 +36,19 @@ impl RustTemplateGenerator {
     pub fn generate(&self, definitions: &[Definition]) -> Result<()> {
         // Build IR
         let schema = IRBuilder::new().build(definitions)?;
+        self.generate_from_schema(&schema)
+    }
 
+    /// Generate Rust code from a pre-built IR schema
+    pub fn generate_from_schema(&self, schema: &IRSchema) -> Result<()> {
         // Validate
-        let errors = Validator::new().validate(&schema);
+        let errors = Validator::new().validate(schema);
         if !errors.is_empty() {
             return Err(self.format_validation_errors(&errors));
         }
 
         // Resolve union variant fields
-        let schema = self.resolve_union_variants(schema)?;
+        let schema = self.resolve_union_variants(schema.clone())?;
 
         // Generate code for each package
         for (package_name, package) in &schema.packages {
