@@ -4,9 +4,9 @@ fn main() {
     // use with explicit options:
     let out_dir = std::env::var("OUT_DIR").unwrap();
     let options = RustOptions::new(out_dir).with_any_type("serde_json::Value");
-    fluorite_codegen::compile_with_options(options, &["fluorite/demo.yaml"]).unwrap();
+    fluorite_codegen::compile_with_options(options, &["fluorite/demo.fl"]).unwrap();
 
     // or to use default options:
     // let out_dir = std::env::var("OUT_DIR").unwrap();
-    // fluorite_codegen::compile(&["fluorite/demo.yaml"], out_dir.as_str()).unwrap();
+    // fluorite_codegen::compile(&["fluorite/demo.fl"], out_dir.as_str()).unwrap();
 }

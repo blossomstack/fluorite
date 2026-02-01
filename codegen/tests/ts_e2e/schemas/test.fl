@@ -1,0 +1,50 @@
+/// Test types for TypeScript E2E tests
+package test.types;
+
+/// A user in the system
+struct User {
+    id: u64,
+    name: String,
+    email: Option<String>,
+    status: UserStatus,
+    metadata: Any,
+}
+
+/// User account status
+enum UserStatus {
+    Active,
+    Inactive,
+    Pending,
+}
+
+/// Event union with custom type tag
+#[type_tag = "eventType"]
+union Event {
+    UserCreated,
+    UserUpdated,
+    UserDeleted,
+}
+
+/// User created event
+struct UserCreated {
+    user: User,
+    timestamp: DateTime,
+}
+
+/// User updated event
+struct UserUpdated {
+    user: User,
+    changes: String,
+}
+
+/// User deleted event
+struct UserDeleted {
+    #[rename = "userId"]
+    user_id: u64,
+}
+
+/// List of users
+type UserList = Vec<User>;
+
+/// Map of user IDs to users
+type UserMap = Map<String, User>;

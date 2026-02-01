@@ -74,10 +74,14 @@ impl AstToIrConverter {
         for file in files {
             for item in &file.items {
                 if let AstItem::Union(union) = item {
-                    for variant in &union.variants {
-                        if let Some(inner_type) = &variant.inner_type {
-                            if self.all_type_names.contains(&inner_type.value) {
-                                self.union_variant_names.insert(inner_type.value.clone());
+                    // Only mark types as union variants for inline unions
+                    let is_inline = !self.has_attr(&union.attrs, "extern");
+                    if is_inline {
+                        for variant in &union.variants {
+                            if let Some(inner_type) = &variant.inner_type {
+                                if self.all_type_names.contains(&inner_type.value) {
+                                    self.union_variant_names.insert(inner_type.value.clone());
+                                }
                             }
                         }
                     }
@@ -162,21 +166,14 @@ impl AstToIrConverter {
     fn convert_union_variant(
         &self,
         variant: &AstUnionVariant,
-        style: IRUnionStyle,
+        _style: IRUnionStyle,
     ) -> IRUnionVariant {
         match &variant.inner_type {
             Some(inner_type) => {
                 if self.all_type_names.contains(&inner_type.value) {
-                    match style {
-                        IRUnionStyle::Inline => {
-                            // Will be resolved later during generation
-                            IRUnionVariant::Inline(variant.name.value.clone(), Vec::new())
-                        }
-                        IRUnionStyle::Extern => IRUnionVariant::Newtype(
-                            variant.name.value.clone(),
-                            inner_type.value.clone(),
-                        ),
-                    }
+                    // This is a newtype variant like Created(Order)
+                    // Always use Newtype, regardless of union style
+                    IRUnionVariant::Newtype(variant.name.value.clone(), inner_type.value.clone())
                 } else {
                     // Simple unit variant
                     IRUnionVariant::Unit(variant.name.value.clone())

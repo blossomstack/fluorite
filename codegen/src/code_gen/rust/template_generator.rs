@@ -8,12 +8,11 @@ use askama::Template;
 
 use crate::code_gen::fs::FileSystem;
 use crate::code_gen::ir::{
-    IRBuilder, IRField, IRFieldType, IRPrimitive, IRSchema, IRStruct, IRType, IRTypeAlias,
-    IRTypeAliasTarget, IRUnion, IRUnionStyle, IRUnionVariant,
+    IRField, IRFieldType, IRPrimitive, IRSchema, IRStruct, IRType, IRTypeAlias, IRTypeAliasTarget,
+    IRUnion, IRUnionStyle, IRUnionVariant,
 };
 use crate::code_gen::utils::to_snake_case;
 use crate::code_gen::validation::{ValidationError, Validator};
-use crate::definitions::Definition;
 
 use super::templates::{
     EnumTemplate, FieldTemplate, ListAliasTemplate, MapAliasTemplate, ModTemplate, ModuleEntry,
@@ -30,13 +29,6 @@ pub struct RustTemplateGenerator {
 impl RustTemplateGenerator {
     pub fn new(options: RustOptions, fs: Arc<dyn FileSystem>) -> Self {
         Self { options, fs }
-    }
-
-    /// Generate Rust code from definitions
-    pub fn generate(&self, definitions: &[Definition]) -> Result<()> {
-        // Build IR
-        let schema = IRBuilder::new().build(definitions)?;
-        self.generate_from_schema(&schema)
     }
 
     /// Generate Rust code from a pre-built IR schema
@@ -77,15 +69,22 @@ impl RustTemplateGenerator {
                         let mut resolved_variants = Vec::new();
                         for variant in &union.variants {
                             match variant {
-                                IRUnionVariant::Inline(name, _) => {
-                                    if let Some(struct_def) = structs.get(name) {
-                                        resolved_variants.push(IRUnionVariant::Inline(
-                                            name.clone(),
-                                            struct_def.fields.clone(),
-                                        ));
+                                IRUnionVariant::Inline(name, fields) => {
+                                    // Only resolve if fields are empty (need resolution from struct)
+                                    if fields.is_empty() {
+                                        if let Some(struct_def) = structs.get(name) {
+                                            resolved_variants.push(IRUnionVariant::Inline(
+                                                name.clone(),
+                                                struct_def.fields.clone(),
+                                            ));
+                                        } else {
+                                            // Treat as unit variant if struct not found
+                                            resolved_variants
+                                                .push(IRUnionVariant::Unit(name.clone()));
+                                        }
                                     } else {
-                                        // Treat as unit variant if struct not found
-                                        resolved_variants.push(IRUnionVariant::Unit(name.clone()));
+                                        // Fields already provided, keep as-is
+                                        resolved_variants.push(variant.clone());
                                     }
                                 }
                                 other @ IRUnionVariant::Unit(_)

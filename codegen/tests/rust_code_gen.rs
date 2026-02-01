@@ -1,42 +1,14 @@
-use std::fs;
 use std::sync::Arc;
 
-use fluorite_codegen::{
-    code_gen::{
-        fs::{FileSystem, FsWriter, MemoryFileSystem},
-        ir::{
-            IRBuilder, IREnum, IRField, IRFieldType, IRPackage, IRPrimitive, IRSchema, IRStruct,
-            IRType, IRTypeAlias, IRTypeAliasTarget, IRUnion, IRUnionStyle, IRUnionVariant,
-        },
-        rust::{RustOptions, RustTemplateGenerator, Visibility},
-        validation::{ValidationError, Validator},
+use fluorite_codegen::code_gen::{
+    fs::{FileSystem, FsWriter, MemoryFileSystem},
+    ir::{
+        IREnum, IRField, IRFieldType, IRPackage, IRPrimitive, IRSchema, IRStruct, IRType,
+        IRTypeAlias, IRTypeAliasTarget, IRUnion, IRUnionStyle, IRUnionVariant,
     },
-    definitions::{CustomType, Definition, DefinitionConfig, Field, FieldConfig},
+    rust::{RustOptions, RustTemplateGenerator, Visibility},
+    validation::{ValidationError, Validator},
 };
-
-pub(crate) fn deserialize_definition_file(file_path: &str) -> anyhow::Result<Definition> {
-    let file_content = fs::read_to_string(file_path)?;
-    let r = serde_yaml::from_str(&file_content)?;
-    Ok(r)
-}
-
-#[test]
-fn test_rust_code_gen() -> anyhow::Result<()> {
-    let d1 = deserialize_definition_file("../examples/users.yml")?;
-    let d2 = deserialize_definition_file("../examples/orders.yml")?;
-
-    let fs = Arc::new(MemoryFileSystem::new());
-    let options = RustOptions::new("/tmp/test_fluorite".to_owned());
-    let generator = RustTemplateGenerator::new(options, fs.clone());
-    generator.generate(&[d1, d2])?;
-
-    // Verify key files exist
-    let files = fs.files();
-    assert!(files.keys().any(|k| k.contains("users/mod.rs")));
-    assert!(files.keys().any(|k| k.contains("orders/mod.rs")));
-
-    Ok(())
-}
 
 #[test]
 fn test_custom_derives() {
@@ -50,58 +22,6 @@ fn test_default_derives() {
     let options = RustOptions::new("/tmp/test".to_owned());
     assert!(options.derives.contains(&"Debug".to_string()));
     assert!(options.derives.contains(&"serde::Serialize".to_string()));
-}
-
-#[test]
-fn test_ir_builder_creates_schema() {
-    let d1 = deserialize_definition_file("../examples/users.yml").unwrap();
-    let d2 = deserialize_definition_file("../examples/orders.yml").unwrap();
-
-    let schema = IRBuilder::new().build(&[d1, d2]).unwrap();
-
-    // Should have two packages
-    assert_eq!(schema.packages.len(), 2);
-    assert!(schema.packages.contains_key("protocols.users"));
-    assert!(schema.packages.contains_key("protocols.orders"));
-
-    // Users package should have User and Gender
-    let users_pkg = schema.packages.get("protocols.users").unwrap();
-    assert_eq!(users_pkg.types.len(), 2);
-}
-
-#[test]
-fn test_ir_builder_handles_unions() {
-    let d = deserialize_definition_file("../examples/orders.yml").unwrap();
-    let schema = IRBuilder::new().build(&[d]).unwrap();
-
-    let orders_pkg = schema.packages.get("protocols.orders").unwrap();
-    let address_union = orders_pkg
-        .types
-        .iter()
-        .find(|t| t.name() == "Address")
-        .unwrap();
-
-    if let IRType::Union(u) = address_union {
-        assert_eq!(u.tag_field, "type");
-        assert_eq!(u.variants.len(), 3);
-        assert_eq!(u.style, IRUnionStyle::Inline);
-    } else {
-        panic!("Expected union type");
-    }
-}
-
-#[test]
-fn test_validation_passes_for_valid_schema() {
-    let d1 = deserialize_definition_file("../examples/users.yml").unwrap();
-    let d2 = deserialize_definition_file("../examples/orders.yml").unwrap();
-    let schema = IRBuilder::new().build(&[d1, d2]).unwrap();
-
-    let errors = Validator::new().validate(&schema);
-    assert!(
-        errors.is_empty(),
-        "Expected no errors but got: {:?}",
-        errors
-    );
 }
 
 #[test]
@@ -124,30 +44,40 @@ fn test_memory_filesystem_append() {
 }
 
 #[test]
+fn test_validation_passes_for_valid_schema() {
+    let schema = create_test_schema();
+
+    let errors = Validator::new().validate(&schema);
+    assert!(
+        errors.is_empty(),
+        "Expected no errors but got: {:?}",
+        errors
+    );
+}
+
+#[test]
 fn test_template_generator_produces_valid_rust() {
-    let d1 = deserialize_definition_file("../examples/users.yml").unwrap();
-    let d2 = deserialize_definition_file("../examples/orders.yml").unwrap();
+    let schema = create_test_schema();
 
     let fs = Arc::new(MemoryFileSystem::new());
     let options = RustOptions::new("/output".to_owned());
     let generator = RustTemplateGenerator::new(options, fs.clone());
 
-    generator.generate(&[d1, d2]).unwrap();
+    generator.generate_from_schema(&schema).unwrap();
 
     // Check that files were generated
     let files = fs.files();
     assert!(files.keys().any(|k| k.contains("mod.rs")));
 
     // Check content of generated struct
-    let users_mod = fs.get_string("/output/protocols/users/mod.rs").unwrap();
+    let users_mod = fs.get_string("/output/test/users/mod.rs").unwrap();
     assert!(users_mod.contains("pub struct User"));
     assert!(users_mod.contains("first_name: String"));
 }
 
 #[test]
 fn test_full_integration() -> anyhow::Result<()> {
-    let d1 = deserialize_definition_file("../examples/users.yml")?;
-    let d2 = deserialize_definition_file("../examples/orders.yml")?;
+    let schema = create_test_schema();
 
     let fs = Arc::new(MemoryFileSystem::new());
     let options = RustOptions::new("/output".to_owned())
@@ -160,11 +90,11 @@ fn test_full_integration() -> anyhow::Result<()> {
         .with_generate_new(false);
 
     let generator = RustTemplateGenerator::new(options, fs.clone());
-    generator.generate(&[d1, d2])?;
+    generator.generate_from_schema(&schema)?;
 
     // Verify users package
     let users_content = fs
-        .get_string("/output/protocols/users/mod.rs")
+        .get_string("/output/test/users/mod.rs")
         .expect("Users module should exist");
 
     assert!(
@@ -187,7 +117,7 @@ fn test_full_integration() -> anyhow::Result<()> {
 
     // Verify orders package
     let orders_content = fs
-        .get_string("/output/protocols/orders/mod.rs")
+        .get_string("/output/test/orders/mod.rs")
         .expect("Orders module should exist");
 
     assert!(
@@ -216,32 +146,32 @@ fn test_full_integration() -> anyhow::Result<()> {
 
 #[test]
 fn test_multi_file_mode() -> anyhow::Result<()> {
-    let d1 = deserialize_definition_file("../examples/users.yml")?;
+    let schema = create_test_schema();
 
     let fs = Arc::new(MemoryFileSystem::new());
     let options = RustOptions::new("/output".to_owned()).with_single_file(false);
 
     let generator = RustTemplateGenerator::new(options, fs.clone());
-    generator.generate(&[d1])?;
+    generator.generate_from_schema(&schema)?;
 
     let files = fs.files();
 
     // Should have separate files
     assert!(
-        files.contains_key("/output/protocols/users/user.rs"),
+        files.contains_key("/output/test/users/user.rs"),
         "Should have user.rs"
     );
     assert!(
-        files.contains_key("/output/protocols/users/gender.rs"),
+        files.contains_key("/output/test/users/gender.rs"),
         "Should have gender.rs"
     );
     assert!(
-        files.contains_key("/output/protocols/users/mod.rs"),
+        files.contains_key("/output/test/users/mod.rs"),
         "Should have mod.rs"
     );
 
     // mod.rs should have module declarations
-    let mod_content = fs.get_string("/output/protocols/users/mod.rs").unwrap();
+    let mod_content = fs.get_string("/output/test/users/mod.rs").unwrap();
     assert!(
         mod_content.contains("mod user;"),
         "Should declare user module"
@@ -257,19 +187,18 @@ fn test_multi_file_mode() -> anyhow::Result<()> {
 
 #[test]
 fn test_field_rename() -> anyhow::Result<()> {
-    let d1 = deserialize_definition_file("../examples/users.yml")?;
-    let d2 = deserialize_definition_file("../examples/orders.yml")?;
+    let schema = create_test_schema();
 
     let fs = Arc::new(MemoryFileSystem::new());
     let options = RustOptions::new("/output".to_owned());
     let generator = RustTemplateGenerator::new(options, fs.clone());
-    generator.generate(&[d1, d2])?;
+    generator.generate_from_schema(&schema)?;
 
     let orders_content = fs
-        .get_string("/output/protocols/orders/mod.rs")
+        .get_string("/output/test/orders/mod.rs")
         .expect("Orders module should exist");
 
-    // The field named "type" in YAML should be renamed to "order_type" in code
+    // The field named "type" should be renamed to "order_type" in code
     // with a serde rename attribute
     assert!(
         orders_content.contains("#[serde(rename = \"type\")]"),
@@ -287,16 +216,15 @@ fn test_field_rename() -> anyhow::Result<()> {
 
 #[test]
 fn test_boxed_optional_field() -> anyhow::Result<()> {
-    let d1 = deserialize_definition_file("../examples/users.yml")?;
-    let d2 = deserialize_definition_file("../examples/orders.yml")?;
+    let schema = create_test_schema();
 
     let fs = Arc::new(MemoryFileSystem::new());
     let options = RustOptions::new("/output".to_owned());
     let generator = RustTemplateGenerator::new(options, fs.clone());
-    generator.generate(&[d1, d2])?;
+    generator.generate_from_schema(&schema)?;
 
     let orders_content = fs
-        .get_string("/output/protocols/orders/mod.rs")
+        .get_string("/output/test/orders/mod.rs")
         .expect("Orders module should exist");
 
     // The shipping field should be Option<Box<...>>
@@ -466,290 +394,6 @@ mod ir_union_variant_tests {
     fn test_newtype_variant_name() {
         let variant = IRUnionVariant::Newtype("Info".to_string(), "AddressInfo".to_string());
         assert_eq!(variant.name(), "Info");
-    }
-}
-
-// ============================================================================
-// Unit tests for IRBuilder
-// ============================================================================
-
-mod ir_builder_tests {
-    use super::*;
-
-    fn create_definition(package: &str, types: Vec<CustomType>) -> Definition {
-        Definition {
-            configs: DefinitionConfig {
-                rust_package: Some(package.to_string()),
-            },
-            types,
-        }
-    }
-
-    #[test]
-    fn test_empty_definitions() {
-        let schema = IRBuilder::new().build(&[]).unwrap();
-        assert!(schema.packages.is_empty());
-    }
-
-    #[test]
-    fn test_missing_rust_package() {
-        let def = Definition {
-            configs: DefinitionConfig { rust_package: None },
-            types: vec![CustomType::Enum {
-                description: None,
-                name: "Test".to_string(),
-                values: vec!["A".to_string()],
-            }],
-        };
-
-        let result = IRBuilder::new().build(&[def]);
-        assert!(result.is_err());
-        assert!(result.unwrap_err().to_string().contains("rust_package"));
-    }
-
-    #[test]
-    fn test_all_primitive_types() {
-        let def = create_definition(
-            "test.package",
-            vec![CustomType::Object {
-                configs: None,
-                description: None,
-                name: "AllPrimitives".to_string(),
-                fields: vec![
-                    Field {
-                        name: "s".to_string(),
-                        field_type: "String".to_string(),
-                        optional: None,
-                        configs: None,
-                        description: None,
-                        deprecated: None,
-                    },
-                    Field {
-                        name: "b".to_string(),
-                        field_type: "Bool".to_string(),
-                        optional: None,
-                        configs: None,
-                        description: None,
-                        deprecated: None,
-                    },
-                    Field {
-                        name: "dt".to_string(),
-                        field_type: "DateTime".to_string(),
-                        optional: None,
-                        configs: None,
-                        description: None,
-                        deprecated: None,
-                    },
-                    Field {
-                        name: "u32".to_string(),
-                        field_type: "UInt32".to_string(),
-                        optional: None,
-                        configs: None,
-                        description: None,
-                        deprecated: None,
-                    },
-                    Field {
-                        name: "u64".to_string(),
-                        field_type: "UInt64".to_string(),
-                        optional: None,
-                        configs: None,
-                        description: None,
-                        deprecated: None,
-                    },
-                    Field {
-                        name: "i32".to_string(),
-                        field_type: "Int32".to_string(),
-                        optional: None,
-                        configs: None,
-                        description: None,
-                        deprecated: None,
-                    },
-                    Field {
-                        name: "i64".to_string(),
-                        field_type: "Int64".to_string(),
-                        optional: None,
-                        configs: None,
-                        description: None,
-                        deprecated: None,
-                    },
-                    Field {
-                        name: "f32".to_string(),
-                        field_type: "Float32".to_string(),
-                        optional: None,
-                        configs: None,
-                        description: None,
-                        deprecated: None,
-                    },
-                    Field {
-                        name: "f64".to_string(),
-                        field_type: "Float64".to_string(),
-                        optional: None,
-                        configs: None,
-                        description: None,
-                        deprecated: None,
-                    },
-                    Field {
-                        name: "any".to_string(),
-                        field_type: "Any".to_string(),
-                        optional: None,
-                        configs: None,
-                        description: None,
-                        deprecated: None,
-                    },
-                ],
-            }],
-        );
-
-        let schema = IRBuilder::new().build(&[def]).unwrap();
-        let pkg = schema.packages.get("test.package").unwrap();
-        assert_eq!(pkg.types.len(), 1);
-
-        if let IRType::Struct(s) = &pkg.types[0] {
-            assert_eq!(s.fields.len(), 10);
-            // Check each field type
-            assert!(matches!(
-                s.fields[0].field_type,
-                IRFieldType::Primitive(IRPrimitive::String)
-            ));
-            assert!(matches!(
-                s.fields[1].field_type,
-                IRFieldType::Primitive(IRPrimitive::Bool)
-            ));
-            assert!(matches!(s.fields[9].field_type, IRFieldType::Any));
-        } else {
-            panic!("Expected struct type");
-        }
-    }
-
-    #[test]
-    fn test_field_with_rename_config() {
-        let def = create_definition(
-            "test.package",
-            vec![CustomType::Object {
-                configs: None,
-                description: None,
-                name: "Test".to_string(),
-                fields: vec![Field {
-                    name: "type".to_string(),
-                    field_type: "String".to_string(),
-                    optional: None,
-                    configs: Some(FieldConfig {
-                        rename: Some("kind".to_string()),
-                        rust_type_wrapper: None,
-                        alias: None,
-                        default: None,
-                        rust: None,
-                    }),
-                    description: None,
-                    deprecated: None,
-                }],
-            }],
-        );
-
-        let schema = IRBuilder::new().build(&[def]).unwrap();
-        let pkg = schema.packages.get("test.package").unwrap();
-
-        if let IRType::Struct(s) = &pkg.types[0] {
-            assert_eq!(s.fields[0].name, "type");
-            assert_eq!(s.fields[0].rename, Some("kind".to_string()));
-            assert!(s.fields[0].needs_rename());
-            assert_eq!(s.fields[0].code_name(), "kind");
-        } else {
-            panic!("Expected struct type");
-        }
-    }
-
-    #[test]
-    fn test_list_type() {
-        let def = create_definition(
-            "test.package",
-            vec![CustomType::List {
-                description: None,
-                name: "StringList".to_string(),
-                item_type: "String".to_string(),
-            }],
-        );
-
-        let schema = IRBuilder::new().build(&[def]).unwrap();
-        let pkg = schema.packages.get("test.package").unwrap();
-
-        if let IRType::TypeAlias(a) = &pkg.types[0] {
-            assert_eq!(a.name, "StringList");
-            if let IRTypeAliasTarget::List(inner) = &a.target {
-                assert!(matches!(inner, IRFieldType::Primitive(IRPrimitive::String)));
-            } else {
-                panic!("Expected List target");
-            }
-        } else {
-            panic!("Expected TypeAlias");
-        }
-    }
-
-    #[test]
-    fn test_map_type() {
-        let def = create_definition(
-            "test.package",
-            vec![CustomType::Map {
-                description: None,
-                name: "StringMap".to_string(),
-                key_type: "String".to_string(),
-                value_type: "Int32".to_string(),
-            }],
-        );
-
-        let schema = IRBuilder::new().build(&[def]).unwrap();
-        let pkg = schema.packages.get("test.package").unwrap();
-
-        if let IRType::TypeAlias(a) = &pkg.types[0] {
-            assert_eq!(a.name, "StringMap");
-            if let IRTypeAliasTarget::Map(key, value) = &a.target {
-                assert!(matches!(key, IRFieldType::Primitive(IRPrimitive::String)));
-                assert!(matches!(value, IRFieldType::Primitive(IRPrimitive::Int32)));
-            } else {
-                panic!("Expected Map target");
-            }
-        } else {
-            panic!("Expected TypeAlias");
-        }
-    }
-
-    #[test]
-    fn test_union_with_extern_style() {
-        use fluorite_codegen::definitions::{TypeConfig, UnionStyle};
-
-        let def = create_definition(
-            "test.package",
-            vec![
-                CustomType::Object {
-                    configs: None,
-                    description: None,
-                    name: "VariantA".to_string(),
-                    fields: vec![],
-                },
-                CustomType::Union {
-                    description: None,
-                    name: "MyUnion".to_string(),
-                    type_tag: "type".to_string(),
-                    values: vec!["VariantA".to_string()],
-                    configs: Some(TypeConfig {
-                        union_style: Some(UnionStyle::Extern),
-                        rename_all: None,
-                        rust: None,
-                    }),
-                },
-            ],
-        );
-
-        let schema = IRBuilder::new().build(&[def]).unwrap();
-        let pkg = schema.packages.get("test.package").unwrap();
-
-        let union_type = pkg.types.iter().find(|t| t.name() == "MyUnion").unwrap();
-        if let IRType::Union(u) = union_type {
-            assert_eq!(u.style, IRUnionStyle::Extern);
-            assert!(matches!(u.variants[0], IRUnionVariant::Newtype(_, _)));
-        } else {
-            panic!("Expected union type");
-        }
     }
 }
 
@@ -1374,15 +1018,15 @@ mod template_generator_tests {
 
     #[test]
     fn test_generates_derive_new_when_enabled() -> anyhow::Result<()> {
-        let d1 = deserialize_definition_file("../examples/users.yml")?;
+        let schema = create_test_schema();
 
         let fs = Arc::new(MemoryFileSystem::new());
         let options = RustOptions::new("/output".to_owned()).with_generate_new(true);
 
         let generator = RustTemplateGenerator::new(options, fs.clone());
-        generator.generate(&[d1])?;
+        generator.generate_from_schema(&schema)?;
 
-        let content = fs.get_string("/output/protocols/users/mod.rs").unwrap();
+        let content = fs.get_string("/output/test/users/mod.rs").unwrap();
         assert!(
             content.contains("derive_new::new"),
             "Should have derive_new"
@@ -1393,15 +1037,15 @@ mod template_generator_tests {
 
     #[test]
     fn test_no_derive_new_when_disabled() -> anyhow::Result<()> {
-        let d1 = deserialize_definition_file("../examples/users.yml")?;
+        let schema = create_test_schema();
 
         let fs = Arc::new(MemoryFileSystem::new());
         let options = RustOptions::new("/output".to_owned()).with_generate_new(false);
 
         let generator = RustTemplateGenerator::new(options, fs.clone());
-        generator.generate(&[d1])?;
+        generator.generate_from_schema(&schema)?;
 
-        let content = fs.get_string("/output/protocols/users/mod.rs").unwrap();
+        let content = fs.get_string("/output/test/users/mod.rs").unwrap();
         assert!(
             !content.contains("derive_new"),
             "Should not have derive_new"
@@ -1412,19 +1056,20 @@ mod template_generator_tests {
 
     #[test]
     fn test_custom_any_type() -> anyhow::Result<()> {
-        let d1 = deserialize_definition_file("../examples/users.yml")?;
-        let d2 = deserialize_definition_file("../examples/orders.yml")?;
+        let schema = create_test_schema();
 
         let fs = Arc::new(MemoryFileSystem::new());
         let options = RustOptions::new("/output".to_owned()).with_any_type("serde_json::Value");
 
         let generator = RustTemplateGenerator::new(options, fs.clone());
-        generator.generate(&[d1, d2])?;
+        generator.generate_from_schema(&schema)?;
 
-        let content = fs.get_string("/output/protocols/orders/mod.rs").unwrap();
+        let content = fs.get_string("/output/test/orders/mod.rs").unwrap();
+        println!("Generated content:\n{}", content);
         assert!(
             content.contains("serde_json::Value"),
-            "Should use custom any type"
+            "Should use custom any type. Got: {}",
+            content
         );
         assert!(
             !content.contains("fluorite::Any"),
@@ -1436,16 +1081,16 @@ mod template_generator_tests {
 
     #[test]
     fn test_extra_derives() -> anyhow::Result<()> {
-        let d1 = deserialize_definition_file("../examples/users.yml")?;
+        let schema = create_test_schema();
 
         let fs = Arc::new(MemoryFileSystem::new());
         let options = RustOptions::new("/output".to_owned())
             .with_additional_derives(vec!["Hash".to_string(), "Eq".to_string()]);
 
         let generator = RustTemplateGenerator::new(options, fs.clone());
-        generator.generate(&[d1])?;
+        generator.generate_from_schema(&schema)?;
 
-        let content = fs.get_string("/output/protocols/users/mod.rs").unwrap();
+        let content = fs.get_string("/output/test/users/mod.rs").unwrap();
         assert!(content.contains("Hash"), "Should have Hash derive");
         assert!(content.contains("Eq"), "Should have Eq derive");
 
@@ -1454,16 +1099,15 @@ mod template_generator_tests {
 
     #[test]
     fn test_union_generates_tag_attribute() -> anyhow::Result<()> {
-        let d1 = deserialize_definition_file("../examples/users.yml")?;
-        let d2 = deserialize_definition_file("../examples/orders.yml")?;
+        let schema = create_test_schema();
 
         let fs = Arc::new(MemoryFileSystem::new());
         let options = RustOptions::new("/output".to_owned());
 
         let generator = RustTemplateGenerator::new(options, fs.clone());
-        generator.generate(&[d1, d2])?;
+        generator.generate_from_schema(&schema)?;
 
-        let content = fs.get_string("/output/protocols/orders/mod.rs").unwrap();
+        let content = fs.get_string("/output/test/orders/mod.rs").unwrap();
         assert!(
             content.contains("#[serde(tag = \"type\")]"),
             "Should have serde tag"
@@ -1474,16 +1118,15 @@ mod template_generator_tests {
 
     #[test]
     fn test_optional_field_skip_serializing_if() -> anyhow::Result<()> {
-        let d1 = deserialize_definition_file("../examples/users.yml")?;
-        let d2 = deserialize_definition_file("../examples/orders.yml")?;
+        let schema = create_test_schema();
 
         let fs = Arc::new(MemoryFileSystem::new());
         let options = RustOptions::new("/output".to_owned());
 
         let generator = RustTemplateGenerator::new(options, fs.clone());
-        generator.generate(&[d1, d2])?;
+        generator.generate_from_schema(&schema)?;
 
-        let content = fs.get_string("/output/protocols/orders/mod.rs").unwrap();
+        let content = fs.get_string("/output/test/orders/mod.rs").unwrap();
         assert!(
             content.contains("skip_serializing_if"),
             "Should have skip_serializing_if for optional fields"
@@ -1494,17 +1137,16 @@ mod template_generator_tests {
 
     #[test]
     fn test_generates_valid_module_structure() -> anyhow::Result<()> {
-        let d1 = deserialize_definition_file("../examples/users.yml")?;
-        let d2 = deserialize_definition_file("../examples/orders.yml")?;
+        let schema = create_test_schema();
 
         let fs = Arc::new(MemoryFileSystem::new());
         let options = RustOptions::new("/output".to_owned()).with_single_file(false);
 
         let generator = RustTemplateGenerator::new(options, fs.clone());
-        generator.generate(&[d1, d2])?;
+        generator.generate_from_schema(&schema)?;
 
         // Check mod.rs has proper structure
-        let users_mod = fs.get_string("/output/protocols/users/mod.rs").unwrap();
+        let users_mod = fs.get_string("/output/test/users/mod.rs").unwrap();
         assert!(
             users_mod.contains("mod user;"),
             "Should declare user module"
@@ -1522,8 +1164,8 @@ mod template_generator_tests {
         assert!(users_mod.contains("::gender::*"), "Should re-export gender");
 
         // Check individual files exist
-        assert!(fs.exists("/output/protocols/users/user.rs"));
-        assert!(fs.exists("/output/protocols/users/gender.rs"));
+        assert!(fs.exists("/output/test/users/user.rs"));
+        assert!(fs.exists("/output/test/users/gender.rs"));
 
         Ok(())
     }
@@ -1534,9 +1176,357 @@ mod template_generator_tests {
         let options = RustOptions::new("/output".to_owned());
 
         let generator = RustTemplateGenerator::new(options, fs.clone());
-        let result = generator.generate(&[]);
+        let schema = IRSchema {
+            packages: std::collections::HashMap::new(),
+        };
+        let result = generator.generate_from_schema(&schema);
 
         assert!(result.is_ok());
         assert!(fs.files().is_empty());
     }
+}
+
+// ============================================================================
+// Helper functions
+// ============================================================================
+
+fn create_test_schema() -> IRSchema {
+    use std::collections::HashMap;
+
+    let mut packages = HashMap::new();
+
+    // Users package
+    let users_pkg = IRPackage {
+        name: "test.users".to_string(),
+        types: vec![
+            IRType::Struct(IRStruct {
+                name: "User".to_string(),
+                fields: vec![
+                    IRField {
+                        name: "first_name".to_string(),
+                        field_type: IRFieldType::Primitive(IRPrimitive::String),
+                        is_optional: false,
+                        is_boxed: false,
+                        rename: None,
+                        doc: None,
+                        alias: vec![],
+                        default: None,
+                        skip_if_none: false,
+                        skip_if_default: false,
+                        flatten: false,
+                        deprecated: false,
+                    },
+                    IRField {
+                        name: "last_name".to_string(),
+                        field_type: IRFieldType::Primitive(IRPrimitive::String),
+                        is_optional: false,
+                        is_boxed: false,
+                        rename: None,
+                        doc: None,
+                        alias: vec![],
+                        default: None,
+                        skip_if_none: false,
+                        skip_if_default: false,
+                        flatten: false,
+                        deprecated: false,
+                    },
+                    IRField {
+                        name: "age".to_string(),
+                        field_type: IRFieldType::Primitive(IRPrimitive::UInt32),
+                        is_optional: false,
+                        is_boxed: false,
+                        rename: None,
+                        doc: None,
+                        alias: vec![],
+                        default: None,
+                        skip_if_none: false,
+                        skip_if_default: false,
+                        flatten: false,
+                        deprecated: false,
+                    },
+                    IRField {
+                        name: "gender".to_string(),
+                        field_type: IRFieldType::Custom("Gender".to_string()),
+                        is_optional: false,
+                        is_boxed: false,
+                        rename: None,
+                        doc: None,
+                        alias: vec![],
+                        default: None,
+                        skip_if_none: false,
+                        skip_if_default: false,
+                        flatten: false,
+                        deprecated: false,
+                    },
+                    IRField {
+                        name: "active".to_string(),
+                        field_type: IRFieldType::Primitive(IRPrimitive::Bool),
+                        is_optional: false,
+                        is_boxed: false,
+                        rename: None,
+                        doc: None,
+                        alias: vec![],
+                        default: None,
+                        skip_if_none: false,
+                        skip_if_default: false,
+                        flatten: false,
+                        deprecated: false,
+                    },
+                ],
+                is_union_variant: false,
+                doc: None,
+                rename_all: None,
+                deny_unknown_fields: false,
+            }),
+            IRType::Enum(IREnum {
+                name: "Gender".to_string(),
+                variants: vec!["Male".to_string(), "Female".to_string()],
+                doc: None,
+            }),
+        ],
+    };
+
+    // Orders package
+    let orders_pkg = IRPackage {
+        name: "test.orders".to_string(),
+        types: vec![
+            IRType::Struct(IRStruct {
+                name: "Order".to_string(),
+                fields: vec![
+                    IRField {
+                        name: "id".to_string(),
+                        field_type: IRFieldType::Primitive(IRPrimitive::UInt64),
+                        is_optional: false,
+                        is_boxed: false,
+                        rename: None,
+                        doc: None,
+                        alias: vec![],
+                        default: None,
+                        skip_if_none: false,
+                        skip_if_default: false,
+                        flatten: false,
+                        deprecated: false,
+                    },
+                    IRField {
+                        name: "item".to_string(),
+                        field_type: IRFieldType::Primitive(IRPrimitive::String),
+                        is_optional: false,
+                        is_boxed: false,
+                        rename: None,
+                        doc: None,
+                        alias: vec![],
+                        default: None,
+                        skip_if_none: false,
+                        skip_if_default: false,
+                        flatten: false,
+                        deprecated: false,
+                    },
+                    IRField {
+                        name: "user".to_string(),
+                        field_type: IRFieldType::Custom("User".to_string()),
+                        is_optional: false,
+                        is_boxed: false,
+                        rename: None,
+                        doc: None,
+                        alias: vec![],
+                        default: None,
+                        skip_if_none: false,
+                        skip_if_default: false,
+                        flatten: false,
+                        deprecated: false,
+                    },
+                    IRField {
+                        name: "shipping".to_string(),
+                        field_type: IRFieldType::Custom("Shipping".to_string()),
+                        is_optional: true,
+                        is_boxed: true,
+                        rename: None,
+                        doc: None,
+                        alias: vec![],
+                        default: None,
+                        skip_if_none: false,
+                        skip_if_default: false,
+                        flatten: false,
+                        deprecated: false,
+                    },
+                    IRField {
+                        name: "type".to_string(),
+                        field_type: IRFieldType::Primitive(IRPrimitive::String),
+                        is_optional: false,
+                        is_boxed: false,
+                        rename: Some("order_type".to_string()),
+                        doc: None,
+                        alias: vec![],
+                        default: None,
+                        skip_if_none: false,
+                        skip_if_default: false,
+                        flatten: false,
+                        deprecated: false,
+                    },
+                ],
+                is_union_variant: false,
+                doc: None,
+                rename_all: None,
+                deny_unknown_fields: false,
+            }),
+            IRType::Struct(IRStruct {
+                name: "Shipping".to_string(),
+                fields: vec![
+                    IRField {
+                        name: "id".to_string(),
+                        field_type: IRFieldType::Primitive(IRPrimitive::String),
+                        is_optional: false,
+                        is_boxed: false,
+                        rename: None,
+                        doc: None,
+                        alias: vec![],
+                        default: None,
+                        skip_if_none: false,
+                        skip_if_default: false,
+                        flatten: false,
+                        deprecated: false,
+                    },
+                    IRField {
+                        name: "order".to_string(),
+                        field_type: IRFieldType::Custom("Order".to_string()),
+                        is_optional: false,
+                        is_boxed: false,
+                        rename: None,
+                        doc: None,
+                        alias: vec![],
+                        default: None,
+                        skip_if_none: false,
+                        skip_if_default: false,
+                        flatten: false,
+                        deprecated: false,
+                    },
+                    IRField {
+                        name: "address".to_string(),
+                        field_type: IRFieldType::Custom("Address".to_string()),
+                        is_optional: false,
+                        is_boxed: false,
+                        rename: None,
+                        doc: None,
+                        alias: vec![],
+                        default: None,
+                        skip_if_none: false,
+                        skip_if_default: false,
+                        flatten: false,
+                        deprecated: false,
+                    },
+                ],
+                is_union_variant: false,
+                doc: None,
+                rename_all: None,
+                deny_unknown_fields: false,
+            }),
+            IRType::Union(IRUnion {
+                name: "Address".to_string(),
+                tag_field: "type".to_string(),
+                variants: vec![
+                    IRUnionVariant::Unit("Empty".to_string()),
+                    IRUnionVariant::Inline(
+                        "PostCode".to_string(),
+                        vec![
+                            IRField {
+                                name: "code".to_string(),
+                                field_type: IRFieldType::Primitive(IRPrimitive::String),
+                                is_optional: false,
+                                is_boxed: false,
+                                rename: None,
+                                doc: None,
+                                alias: vec![],
+                                default: None,
+                                skip_if_none: false,
+                                skip_if_default: false,
+                                flatten: false,
+                                deprecated: false,
+                            },
+                            IRField {
+                                name: "order".to_string(),
+                                field_type: IRFieldType::Custom("Order".to_string()),
+                                is_optional: false,
+                                is_boxed: false,
+                                rename: None,
+                                doc: None,
+                                alias: vec![],
+                                default: None,
+                                skip_if_none: false,
+                                skip_if_default: false,
+                                flatten: false,
+                                deprecated: false,
+                            },
+                            IRField {
+                                name: "instruction".to_string(),
+                                field_type: IRFieldType::Any,
+                                is_optional: false,
+                                is_boxed: false,
+                                rename: None,
+                                doc: None,
+                                alias: vec![],
+                                default: None,
+                                skip_if_none: false,
+                                skip_if_default: false,
+                                flatten: false,
+                                deprecated: false,
+                            },
+                        ],
+                    ),
+                    IRUnionVariant::Inline(
+                        "AddressInfo".to_string(),
+                        vec![
+                            IRField {
+                                name: "first_line".to_string(),
+                                field_type: IRFieldType::Primitive(IRPrimitive::String),
+                                is_optional: false,
+                                is_boxed: false,
+                                rename: None,
+                                doc: None,
+                                alias: vec![],
+                                default: None,
+                                skip_if_none: false,
+                                skip_if_default: false,
+                                flatten: false,
+                                deprecated: false,
+                            },
+                            IRField {
+                                name: "second_line".to_string(),
+                                field_type: IRFieldType::Primitive(IRPrimitive::String),
+                                is_optional: false,
+                                is_boxed: false,
+                                rename: None,
+                                doc: None,
+                                alias: vec![],
+                                default: None,
+                                skip_if_none: false,
+                                skip_if_default: false,
+                                flatten: false,
+                                deprecated: false,
+                            },
+                        ],
+                    ),
+                ],
+                style: IRUnionStyle::Inline,
+                doc: None,
+            }),
+            IRType::TypeAlias(IRTypeAlias {
+                name: "OrderList".to_string(),
+                target: IRTypeAliasTarget::List(IRFieldType::Custom("Order".to_string())),
+                doc: None,
+            }),
+            IRType::TypeAlias(IRTypeAlias {
+                name: "OrderMap".to_string(),
+                target: IRTypeAliasTarget::Map(
+                    IRFieldType::Primitive(IRPrimitive::String),
+                    IRFieldType::Custom("Order".to_string()),
+                ),
+                doc: None,
+            }),
+        ],
+    };
+
+    packages.insert("test.users".to_string(), users_pkg);
+    packages.insert("test.orders".to_string(), orders_pkg);
+
+    IRSchema { packages }
 }

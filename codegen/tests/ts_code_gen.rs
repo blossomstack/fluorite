@@ -1,19 +1,13 @@
-use std::fs;
 use std::sync::Arc;
 
-use fluorite_codegen::{
-    code_gen::{
-        fs::MemoryFileSystem,
-        ts::{TsTemplateGenerator, TypeScriptOptions},
+use fluorite_codegen::code_gen::{
+    fs::MemoryFileSystem,
+    ir::{
+        IREnum, IRField, IRFieldType, IRPackage, IRPrimitive, IRSchema, IRStruct, IRType,
+        IRTypeAlias, IRTypeAliasTarget, IRUnion, IRUnionStyle, IRUnionVariant,
     },
-    definitions::Definition,
+    ts::{TsTemplateGenerator, TypeScriptOptions},
 };
-
-fn deserialize_definition_file(file_path: &str) -> anyhow::Result<Definition> {
-    let file_content = fs::read_to_string(file_path)?;
-    let r = serde_yaml::from_str(&file_content)?;
-    Ok(r)
-}
 
 #[test]
 fn test_typescript_options_default() {
@@ -39,14 +33,14 @@ fn test_typescript_options_builder() {
 
 #[test]
 fn test_ts_generates_interface() -> anyhow::Result<()> {
-    let d1 = deserialize_definition_file("../examples/users.yml")?;
+    let schema = create_test_schema();
 
     let fs = Arc::new(MemoryFileSystem::new());
     let options = TypeScriptOptions::new("/output".to_owned());
     let generator = TsTemplateGenerator::new(options, fs.clone());
-    generator.generate(&[d1])?;
+    generator.generate_from_schema(&schema)?;
 
-    let content = fs.get_string("/output/protocols/users/user.ts").unwrap();
+    let content = fs.get_string("/output/test/users/user.ts").unwrap();
     assert!(
         content.contains("export interface User"),
         "Should have User interface"
@@ -70,14 +64,14 @@ fn test_ts_generates_interface() -> anyhow::Result<()> {
 
 #[test]
 fn test_ts_generates_enum() -> anyhow::Result<()> {
-    let d1 = deserialize_definition_file("../examples/users.yml")?;
+    let schema = create_test_schema();
 
     let fs = Arc::new(MemoryFileSystem::new());
     let options = TypeScriptOptions::new("/output".to_owned());
     let generator = TsTemplateGenerator::new(options, fs.clone());
-    generator.generate(&[d1])?;
+    generator.generate_from_schema(&schema)?;
 
-    let content = fs.get_string("/output/protocols/users/gender.ts").unwrap();
+    let content = fs.get_string("/output/test/users/gender.ts").unwrap();
     assert!(
         content.contains("export enum Gender"),
         "Should have Gender enum"
@@ -96,17 +90,14 @@ fn test_ts_generates_enum() -> anyhow::Result<()> {
 
 #[test]
 fn test_ts_generates_discriminated_union() -> anyhow::Result<()> {
-    let d1 = deserialize_definition_file("../examples/users.yml")?;
-    let d2 = deserialize_definition_file("../examples/orders.yml")?;
+    let schema = create_test_schema();
 
     let fs = Arc::new(MemoryFileSystem::new());
     let options = TypeScriptOptions::new("/output".to_owned());
     let generator = TsTemplateGenerator::new(options, fs.clone());
-    generator.generate(&[d1, d2])?;
+    generator.generate_from_schema(&schema)?;
 
-    let content = fs
-        .get_string("/output/protocols/orders/address.ts")
-        .unwrap();
+    let content = fs.get_string("/output/test/orders/address.ts").unwrap();
     assert!(
         content.contains("export type Address"),
         "Should have Address type"
@@ -121,26 +112,21 @@ fn test_ts_generates_discriminated_union() -> anyhow::Result<()> {
 
 #[test]
 fn test_ts_generates_type_alias() -> anyhow::Result<()> {
-    let d1 = deserialize_definition_file("../examples/users.yml")?;
-    let d2 = deserialize_definition_file("../examples/orders.yml")?;
+    let schema = create_test_schema();
 
     let fs = Arc::new(MemoryFileSystem::new());
     let options = TypeScriptOptions::new("/output".to_owned());
     let generator = TsTemplateGenerator::new(options, fs.clone());
-    generator.generate(&[d1, d2])?;
+    generator.generate_from_schema(&schema)?;
 
-    let order_list_content = fs
-        .get_string("/output/protocols/orders/orderList.ts")
-        .unwrap();
+    let order_list_content = fs.get_string("/output/test/orders/orderList.ts").unwrap();
     assert!(
         order_list_content.contains("export type OrderList = Order[]"),
         "Should have list alias. Got: {}",
         order_list_content
     );
 
-    let order_map_content = fs
-        .get_string("/output/protocols/orders/orderMap.ts")
-        .unwrap();
+    let order_map_content = fs.get_string("/output/test/orders/orderMap.ts").unwrap();
     assert!(
         order_map_content.contains("export type OrderMap = Record<string, Order>"),
         "Should have map alias. Got: {}",
@@ -152,25 +138,25 @@ fn test_ts_generates_type_alias() -> anyhow::Result<()> {
 
 #[test]
 fn test_ts_single_file_mode() -> anyhow::Result<()> {
-    let d1 = deserialize_definition_file("../examples/users.yml")?;
+    let schema = create_test_schema();
 
     let fs = Arc::new(MemoryFileSystem::new());
     let options = TypeScriptOptions::new("/output".to_owned()).with_single_file(true);
     let generator = TsTemplateGenerator::new(options, fs.clone());
-    generator.generate(&[d1])?;
+    generator.generate_from_schema(&schema)?;
 
     // Should only have index.ts
     let files = fs.files();
     assert!(
-        files.contains_key("/output/protocols/users/index.ts"),
+        files.contains_key("/output/test/users/index.ts"),
         "Should have index.ts"
     );
     assert!(
-        !files.contains_key("/output/protocols/users/user.ts"),
+        !files.contains_key("/output/test/users/user.ts"),
         "Should NOT have user.ts"
     );
 
-    let content = fs.get_string("/output/protocols/users/index.ts").unwrap();
+    let content = fs.get_string("/output/test/users/index.ts").unwrap();
     assert!(
         content.contains("export interface User"),
         "Should have User in index.ts"
@@ -185,14 +171,14 @@ fn test_ts_single_file_mode() -> anyhow::Result<()> {
 
 #[test]
 fn test_ts_readonly_option() -> anyhow::Result<()> {
-    let d1 = deserialize_definition_file("../examples/users.yml")?;
+    let schema = create_test_schema();
 
     let fs = Arc::new(MemoryFileSystem::new());
     let options = TypeScriptOptions::new("/output".to_owned()).with_readonly(true);
     let generator = TsTemplateGenerator::new(options, fs.clone());
-    generator.generate(&[d1])?;
+    generator.generate_from_schema(&schema)?;
 
-    let content = fs.get_string("/output/protocols/users/user.ts").unwrap();
+    let content = fs.get_string("/output/test/users/user.ts").unwrap();
     assert!(
         content.contains("readonly firstName: string"),
         "Should have readonly fields. Got: {}",
@@ -204,18 +190,15 @@ fn test_ts_readonly_option() -> anyhow::Result<()> {
 
 #[test]
 fn test_ts_any_type_option() -> anyhow::Result<()> {
-    let d1 = deserialize_definition_file("../examples/users.yml")?;
-    let d2 = deserialize_definition_file("../examples/orders.yml")?;
+    let schema = create_test_schema();
 
     let fs = Arc::new(MemoryFileSystem::new());
     let options = TypeScriptOptions::new("/output".to_owned()).with_any_type("any");
     let generator = TsTemplateGenerator::new(options, fs.clone());
-    generator.generate(&[d1, d2])?;
+    generator.generate_from_schema(&schema)?;
 
     // PostCode has an 'instruction' field of type Any, which is inlined into Address union
-    let content = fs
-        .get_string("/output/protocols/orders/address.ts")
-        .unwrap();
+    let content = fs.get_string("/output/test/orders/address.ts").unwrap();
     assert!(
         content.contains("instruction: any"),
         "Should use custom any type. Got: {}",
@@ -231,15 +214,14 @@ fn test_ts_any_type_option() -> anyhow::Result<()> {
 
 #[test]
 fn test_ts_optional_fields() -> anyhow::Result<()> {
-    let d1 = deserialize_definition_file("../examples/users.yml")?;
-    let d2 = deserialize_definition_file("../examples/orders.yml")?;
+    let schema = create_test_schema();
 
     let fs = Arc::new(MemoryFileSystem::new());
     let options = TypeScriptOptions::new("/output".to_owned());
     let generator = TsTemplateGenerator::new(options, fs.clone());
-    generator.generate(&[d1, d2])?;
+    generator.generate_from_schema(&schema)?;
 
-    let content = fs.get_string("/output/protocols/orders/order.ts").unwrap();
+    let content = fs.get_string("/output/test/orders/order.ts").unwrap();
     // shipping field is optional
     assert!(
         content.contains("shipping?:"),
@@ -252,14 +234,14 @@ fn test_ts_optional_fields() -> anyhow::Result<()> {
 
 #[test]
 fn test_ts_index_file_exports() -> anyhow::Result<()> {
-    let d1 = deserialize_definition_file("../examples/users.yml")?;
+    let schema = create_test_schema();
 
     let fs = Arc::new(MemoryFileSystem::new());
     let options = TypeScriptOptions::new("/output".to_owned());
     let generator = TsTemplateGenerator::new(options, fs.clone());
-    generator.generate(&[d1])?;
+    generator.generate_from_schema(&schema)?;
 
-    let content = fs.get_string("/output/protocols/users/index.ts").unwrap();
+    let content = fs.get_string("/output/test/users/index.ts").unwrap();
     assert!(
         content.contains("export * from './user'"),
         "Should export user"
@@ -278,8 +260,356 @@ fn test_ts_empty_definition_list() {
     let options = TypeScriptOptions::new("/output".to_owned());
 
     let generator = TsTemplateGenerator::new(options, fs.clone());
-    let result = generator.generate(&[]);
+    let schema = IRSchema {
+        packages: std::collections::HashMap::new(),
+    };
+    let result = generator.generate_from_schema(&schema);
 
     assert!(result.is_ok());
     assert!(fs.files().is_empty());
+}
+
+// ============================================================================
+// Helper functions
+// ============================================================================
+
+fn create_test_schema() -> IRSchema {
+    use std::collections::HashMap;
+
+    let mut packages = HashMap::new();
+
+    // Users package
+    let users_pkg = IRPackage {
+        name: "test.users".to_string(),
+        types: vec![
+            IRType::Struct(IRStruct {
+                name: "User".to_string(),
+                fields: vec![
+                    IRField {
+                        name: "first_name".to_string(),
+                        field_type: IRFieldType::Primitive(IRPrimitive::String),
+                        is_optional: false,
+                        is_boxed: false,
+                        rename: None,
+                        doc: None,
+                        alias: vec![],
+                        default: None,
+                        skip_if_none: false,
+                        skip_if_default: false,
+                        flatten: false,
+                        deprecated: false,
+                    },
+                    IRField {
+                        name: "last_name".to_string(),
+                        field_type: IRFieldType::Primitive(IRPrimitive::String),
+                        is_optional: false,
+                        is_boxed: false,
+                        rename: None,
+                        doc: None,
+                        alias: vec![],
+                        default: None,
+                        skip_if_none: false,
+                        skip_if_default: false,
+                        flatten: false,
+                        deprecated: false,
+                    },
+                    IRField {
+                        name: "age".to_string(),
+                        field_type: IRFieldType::Primitive(IRPrimitive::UInt32),
+                        is_optional: false,
+                        is_boxed: false,
+                        rename: None,
+                        doc: None,
+                        alias: vec![],
+                        default: None,
+                        skip_if_none: false,
+                        skip_if_default: false,
+                        flatten: false,
+                        deprecated: false,
+                    },
+                    IRField {
+                        name: "gender".to_string(),
+                        field_type: IRFieldType::Custom("Gender".to_string()),
+                        is_optional: false,
+                        is_boxed: false,
+                        rename: None,
+                        doc: None,
+                        alias: vec![],
+                        default: None,
+                        skip_if_none: false,
+                        skip_if_default: false,
+                        flatten: false,
+                        deprecated: false,
+                    },
+                    IRField {
+                        name: "active".to_string(),
+                        field_type: IRFieldType::Primitive(IRPrimitive::Bool),
+                        is_optional: false,
+                        is_boxed: false,
+                        rename: None,
+                        doc: None,
+                        alias: vec![],
+                        default: None,
+                        skip_if_none: false,
+                        skip_if_default: false,
+                        flatten: false,
+                        deprecated: false,
+                    },
+                ],
+                is_union_variant: false,
+                doc: None,
+                rename_all: None,
+                deny_unknown_fields: false,
+            }),
+            IRType::Enum(IREnum {
+                name: "Gender".to_string(),
+                variants: vec!["Male".to_string(), "Female".to_string()],
+                doc: None,
+            }),
+        ],
+    };
+
+    // Orders package
+    let orders_pkg = IRPackage {
+        name: "test.orders".to_string(),
+        types: vec![
+            IRType::Struct(IRStruct {
+                name: "Order".to_string(),
+                fields: vec![
+                    IRField {
+                        name: "id".to_string(),
+                        field_type: IRFieldType::Primitive(IRPrimitive::UInt64),
+                        is_optional: false,
+                        is_boxed: false,
+                        rename: None,
+                        doc: None,
+                        alias: vec![],
+                        default: None,
+                        skip_if_none: false,
+                        skip_if_default: false,
+                        flatten: false,
+                        deprecated: false,
+                    },
+                    IRField {
+                        name: "item".to_string(),
+                        field_type: IRFieldType::Primitive(IRPrimitive::String),
+                        is_optional: false,
+                        is_boxed: false,
+                        rename: None,
+                        doc: None,
+                        alias: vec![],
+                        default: None,
+                        skip_if_none: false,
+                        skip_if_default: false,
+                        flatten: false,
+                        deprecated: false,
+                    },
+                    IRField {
+                        name: "user".to_string(),
+                        field_type: IRFieldType::Custom("User".to_string()),
+                        is_optional: false,
+                        is_boxed: false,
+                        rename: None,
+                        doc: None,
+                        alias: vec![],
+                        default: None,
+                        skip_if_none: false,
+                        skip_if_default: false,
+                        flatten: false,
+                        deprecated: false,
+                    },
+                    IRField {
+                        name: "shipping".to_string(),
+                        field_type: IRFieldType::Custom("Shipping".to_string()),
+                        is_optional: true,
+                        is_boxed: true,
+                        rename: None,
+                        doc: None,
+                        alias: vec![],
+                        default: None,
+                        skip_if_none: false,
+                        skip_if_default: false,
+                        flatten: false,
+                        deprecated: false,
+                    },
+                    IRField {
+                        name: "type".to_string(),
+                        field_type: IRFieldType::Primitive(IRPrimitive::String),
+                        is_optional: false,
+                        is_boxed: false,
+                        rename: Some("order_type".to_string()),
+                        doc: None,
+                        alias: vec![],
+                        default: None,
+                        skip_if_none: false,
+                        skip_if_default: false,
+                        flatten: false,
+                        deprecated: false,
+                    },
+                ],
+                is_union_variant: false,
+                doc: None,
+                rename_all: None,
+                deny_unknown_fields: false,
+            }),
+            IRType::Struct(IRStruct {
+                name: "Shipping".to_string(),
+                fields: vec![
+                    IRField {
+                        name: "id".to_string(),
+                        field_type: IRFieldType::Primitive(IRPrimitive::String),
+                        is_optional: false,
+                        is_boxed: false,
+                        rename: None,
+                        doc: None,
+                        alias: vec![],
+                        default: None,
+                        skip_if_none: false,
+                        skip_if_default: false,
+                        flatten: false,
+                        deprecated: false,
+                    },
+                    IRField {
+                        name: "order".to_string(),
+                        field_type: IRFieldType::Custom("Order".to_string()),
+                        is_optional: false,
+                        is_boxed: false,
+                        rename: None,
+                        doc: None,
+                        alias: vec![],
+                        default: None,
+                        skip_if_none: false,
+                        skip_if_default: false,
+                        flatten: false,
+                        deprecated: false,
+                    },
+                    IRField {
+                        name: "address".to_string(),
+                        field_type: IRFieldType::Custom("Address".to_string()),
+                        is_optional: false,
+                        is_boxed: false,
+                        rename: None,
+                        doc: None,
+                        alias: vec![],
+                        default: None,
+                        skip_if_none: false,
+                        skip_if_default: false,
+                        flatten: false,
+                        deprecated: false,
+                    },
+                ],
+                is_union_variant: false,
+                doc: None,
+                rename_all: None,
+                deny_unknown_fields: false,
+            }),
+            IRType::Union(IRUnion {
+                name: "Address".to_string(),
+                tag_field: "type".to_string(),
+                variants: vec![
+                    IRUnionVariant::Unit("Empty".to_string()),
+                    IRUnionVariant::Inline(
+                        "PostCode".to_string(),
+                        vec![
+                            IRField {
+                                name: "code".to_string(),
+                                field_type: IRFieldType::Primitive(IRPrimitive::String),
+                                is_optional: false,
+                                is_boxed: false,
+                                rename: None,
+                                doc: None,
+                                alias: vec![],
+                                default: None,
+                                skip_if_none: false,
+                                skip_if_default: false,
+                                flatten: false,
+                                deprecated: false,
+                            },
+                            IRField {
+                                name: "order".to_string(),
+                                field_type: IRFieldType::Custom("Order".to_string()),
+                                is_optional: false,
+                                is_boxed: false,
+                                rename: None,
+                                doc: None,
+                                alias: vec![],
+                                default: None,
+                                skip_if_none: false,
+                                skip_if_default: false,
+                                flatten: false,
+                                deprecated: false,
+                            },
+                            IRField {
+                                name: "instruction".to_string(),
+                                field_type: IRFieldType::Any,
+                                is_optional: false,
+                                is_boxed: false,
+                                rename: None,
+                                doc: None,
+                                alias: vec![],
+                                default: None,
+                                skip_if_none: false,
+                                skip_if_default: false,
+                                flatten: false,
+                                deprecated: false,
+                            },
+                        ],
+                    ),
+                    IRUnionVariant::Inline(
+                        "AddressInfo".to_string(),
+                        vec![
+                            IRField {
+                                name: "first_line".to_string(),
+                                field_type: IRFieldType::Primitive(IRPrimitive::String),
+                                is_optional: false,
+                                is_boxed: false,
+                                rename: None,
+                                doc: None,
+                                alias: vec![],
+                                default: None,
+                                skip_if_none: false,
+                                skip_if_default: false,
+                                flatten: false,
+                                deprecated: false,
+                            },
+                            IRField {
+                                name: "second_line".to_string(),
+                                field_type: IRFieldType::Primitive(IRPrimitive::String),
+                                is_optional: false,
+                                is_boxed: false,
+                                rename: None,
+                                doc: None,
+                                alias: vec![],
+                                default: None,
+                                skip_if_none: false,
+                                skip_if_default: false,
+                                flatten: false,
+                                deprecated: false,
+                            },
+                        ],
+                    ),
+                ],
+                style: IRUnionStyle::Inline,
+                doc: None,
+            }),
+            IRType::TypeAlias(IRTypeAlias {
+                name: "OrderList".to_string(),
+                target: IRTypeAliasTarget::List(IRFieldType::Custom("Order".to_string())),
+                doc: None,
+            }),
+            IRType::TypeAlias(IRTypeAlias {
+                name: "OrderMap".to_string(),
+                target: IRTypeAliasTarget::Map(
+                    IRFieldType::Primitive(IRPrimitive::String),
+                    IRFieldType::Custom("Order".to_string()),
+                ),
+                doc: None,
+            }),
+        ],
+    };
+
+    packages.insert("test.users".to_string(), users_pkg);
+    packages.insert("test.orders".to_string(), orders_pkg);
+
+    IRSchema { packages }
 }

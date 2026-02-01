@@ -12,25 +12,20 @@
     )
 )]
 
-use std::fs;
 use std::path::Path;
 use std::sync::Arc;
 
 use clap::{Parser, Subcommand};
 
 use code_gen::fs::RealFileSystem;
-use code_gen::ir::IRSchema;
 use code_gen::rust::{RustOptions, RustTemplateGenerator, Visibility};
-use definitions::Definition;
 
 mod code_gen;
-mod definitions;
 mod idl;
-mod utils;
 
 #[derive(Parser)]
 #[command(name = "fluorite")]
-#[command(about = "Code generator from YAML schema definitions")]
+#[command(about = "Code generator from Fluorite IDL (.fl) schema definitions")]
 struct Cli {
     #[command(subcommand)]
     command: Commands,
@@ -38,9 +33,9 @@ struct Cli {
 
 #[derive(Subcommand)]
 enum Commands {
-    /// Generate Rust code from YAML definitions
+    /// Generate Rust code from .fl definitions
     Rust {
-        /// Input YAML files
+        /// Input .fl files
         #[arg(short, long, required = true, num_args = 1..)]
         inputs: Vec<String>,
 
@@ -73,9 +68,9 @@ enum Commands {
         visibility: String,
     },
 
-    /// Generate TypeScript code from YAML definitions
+    /// Generate TypeScript code from .fl definitions
     Ts {
-        /// Input YAML files
+        /// Input .fl files
         #[arg(short, long, required = true, num_args = 1..)]
         inputs: Vec<String>,
 
@@ -115,8 +110,8 @@ fn main() -> anyhow::Result<()> {
             generate_new,
             visibility,
         } => {
-            // Load inputs (YAML or .fl files)
-            let (definitions, ir_schema) = load_inputs(&inputs)?;
+            // Load inputs from .fl files
+            let schema = load_fl_inputs(&inputs)?;
 
             // Build options
             let mut options = RustOptions::new(output)
@@ -158,12 +153,7 @@ fn main() -> anyhow::Result<()> {
             // Generate
             let fs = Arc::new(RealFileSystem::new());
             let generator = RustTemplateGenerator::new(options, fs);
-
-            if let Some(schema) = ir_schema {
-                generator.generate_from_schema(&schema)?;
-            } else {
-                generator.generate(&definitions)?;
-            }
+            generator.generate_from_schema(&schema)?;
 
             println!("Code generation complete!");
         }
@@ -176,8 +166,8 @@ fn main() -> anyhow::Result<()> {
             readonly,
             package_name,
         } => {
-            // Load inputs (YAML or .fl files)
-            let (definitions, ir_schema) = load_inputs(&inputs)?;
+            // Load inputs from .fl files
+            let schema = load_fl_inputs(&inputs)?;
 
             // Build options
             let mut options = code_gen::ts::TypeScriptOptions::new(output)
@@ -192,12 +182,7 @@ fn main() -> anyhow::Result<()> {
             // Generate
             let fs = Arc::new(RealFileSystem::new());
             let generator = code_gen::ts::TsTemplateGenerator::new(options, fs);
-
-            if let Some(schema) = ir_schema {
-                generator.generate_from_schema(&schema)?;
-            } else {
-                generator.generate(&definitions)?;
-            }
+            generator.generate_from_schema(&schema)?;
 
             println!("TypeScript code generation complete!");
         }
@@ -206,28 +191,8 @@ fn main() -> anyhow::Result<()> {
     Ok(())
 }
 
-/// Load definitions from input files, detecting YAML or .fl format
-fn load_inputs(inputs: &[String]) -> anyhow::Result<(Vec<Definition>, Option<IRSchema>)> {
-    let mut yaml_defs: Vec<Definition> = Vec::new();
-    let mut fl_files: Vec<String> = Vec::new();
-
-    for path in inputs {
-        if path.ends_with(".fl") {
-            fl_files.push(path.clone());
-        } else {
-            // Assume YAML
-            let content = fs::read_to_string(path)?;
-            let def: Definition = serde_yaml::from_str(&content)?;
-            yaml_defs.push(def);
-        }
-    }
-
-    let ir_schema = if !fl_files.is_empty() {
-        let paths: Vec<&Path> = fl_files.iter().map(Path::new).collect();
-        Some(idl::parse_to_ir(&paths)?)
-    } else {
-        None
-    };
-
-    Ok((yaml_defs, ir_schema))
+/// Load IR schema from .fl input files
+fn load_fl_inputs(inputs: &[String]) -> anyhow::Result<code_gen::ir::IRSchema> {
+    let paths: Vec<&Path> = inputs.iter().map(Path::new).collect();
+    idl::parse_to_ir(&paths)
 }

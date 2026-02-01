@@ -207,8 +207,10 @@ impl Validator {
         for variant in &u.variants {
             match variant {
                 IRUnionVariant::Unit(_) => {}
-                IRUnionVariant::Inline(name, _) => {
-                    if !known_types.contains(name) {
+                IRUnionVariant::Inline(name, fields) => {
+                    // Only check if type exists if fields are empty (needs resolution)
+                    // If fields are present, they're embedded and type doesn't need to exist
+                    if fields.is_empty() && !known_types.contains(name) {
                         errors.push(ValidationError::UnknownType {
                             type_name: name.clone(),
                             referenced_from: u.name.clone(),

@@ -1,0 +1,33 @@
+/// Demo types for the example project
+package demo;
+
+/// An object variant for TestUnion
+#[rename_all = "camelCase"]
+struct AnObject {
+    field_a: String,
+}
+
+/// A user in the system
+#[rename_all = "camelCase"]
+struct User {
+    first_name: String,
+    last_name: String,
+    age: u32,
+    gender: Gender,
+    active: bool,
+    info: Option<Any>,
+}
+
+/// User's gender
+enum Gender {
+    Male,
+    Female,
+}
+
+/// Test union with extern style
+#[type_tag = "type"]
+#[extern]
+union TestUnion {
+    PlainString(String),
+    AnObject(AnObject),
+}
