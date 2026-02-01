@@ -1,4 +1,4 @@
-.PHONY: build test clean fmt lint check all release
+.PHONY: build test clean fmt lint check all release interop-test
 
 all: fmt-check lint test
 
@@ -25,3 +25,6 @@ lint:
 
 check:
 	cargo check
+
+interop-test:
+	./tests/interop/run-interop-test.sh

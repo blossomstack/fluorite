@@ -1,0 +1,13 @@
+# Generated files
+generated/
+dist/
+
+# Dependencies
+node_modules/
+
+# Logs
+*.log
+npm-debug.log*
+
+# TypeScript
+*.tsbuildinfo

@@ -1,0 +1,4 @@
+#!/bin/sh
+echo "Error: Pre-built binaries not yet available."
+echo "Please build from source: cargo build --release --package fluorite_codegen"
+exit 1

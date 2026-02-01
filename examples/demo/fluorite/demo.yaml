@@ -18,6 +18,8 @@ types:
       - name: info
         type: Any
         optional: true
+    configs:
+      rename_all: camelCase
   
   - name: Gender
     type: Enum
@@ -39,3 +41,5 @@ types:
     fields:
       - name: field_a
         type: String
+    configs:
+      rename_all: camelCase
