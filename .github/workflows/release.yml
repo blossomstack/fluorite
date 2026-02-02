@@ -47,6 +47,12 @@ jobs:
         with:
           targets: ${{ matrix.target }}
 
+      - name: Cache Rust dependencies
+        uses: Swatinem/rust-cache@v2
+        with:
+          key: ${{ matrix.target }}
+          shared-key: release
+
       - name: Install cross-compilation tools
         if: matrix.cross
         run: cargo install cross --git https://github.com/cross-rs/cross
@@ -135,6 +141,11 @@ jobs:
 
       - name: Install Rust toolchain
         uses: dtolnay/rust-toolchain@stable
+
+      - name: Cache Rust dependencies
+        uses: Swatinem/rust-cache@v2
+        with:
+          shared-key: release
 
       - name: Publish fluorite (runtime) to crates.io
         run: cargo publish --package fluorite --token ${{ secrets.CRATES_IO_TOKEN }}
