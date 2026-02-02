@@ -1,0 +1,21 @@
+{
+  "name": "@zhxiaogg/fluorite-darwin-x64",
+  "version": "0.1.9",
+  "description": "Fluorite CLI binary for macOS x64",
+  "os": [
+    "darwin"
+  ],
+  "cpu": [
+    "x64"
+  ],
+  "main": "bin/fluorite",
+  "files": [
+    "bin/fluorite"
+  ],
+  "preferUnplugged": true,
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/blossomstack/fluorite.git"
+  }
+}

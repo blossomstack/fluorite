@@ -1,0 +1,223 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  # Build binaries for all supported platforms
+  build-binaries:
+    name: Build ${{ matrix.target }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - target: x86_64-unknown-linux-gnu
+            os: ubuntu-latest
+            artifact_name: fluorite
+            npm_package: fluorite-linux-x64
+          - target: x86_64-apple-darwin
+            os: macos-latest
+            artifact_name: fluorite
+            npm_package: fluorite-darwin-x64
+          - target: aarch64-apple-darwin
+            os: macos-latest
+            artifact_name: fluorite
+            npm_package: fluorite-darwin-arm64
+          - target: x86_64-pc-windows-msvc
+            os: windows-latest
+            artifact_name: fluorite.exe
+            npm_package: fluorite-win32-x64
+          - target: aarch64-unknown-linux-gnu
+            os: ubuntu-latest
+            artifact_name: fluorite
+            npm_package: fluorite-linux-arm64
+            cross: true
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ matrix.target }}
+
+      - name: Install cross-compilation tools
+        if: matrix.cross
+        run: cargo install cross --git https://github.com/cross-rs/cross
+
+      - name: Build binary (native)
+        if: ${{ !matrix.cross }}
+        run: cargo build --release --package fluorite_codegen --target ${{ matrix.target }}
+
+      - name: Build binary (cross)
+        if: matrix.cross
+        run: cross build --release --package fluorite_codegen --target ${{ matrix.target }}
+
+      - name: Prepare npm package
+        shell: bash
+        run: |
+          mkdir -p npm/${{ matrix.npm_package }}/bin
+          cp target/${{ matrix.target }}/release/${{ matrix.artifact_name }} npm/${{ matrix.npm_package }}/bin/
+
+      - name: Upload npm package artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.npm_package }}
+          path: npm/${{ matrix.npm_package }}
+
+      - name: Upload binary for release
+        uses: actions/upload-artifact@v4
+        with:
+          name: binary-${{ matrix.target }}
+          path: target/${{ matrix.target }}/release/${{ matrix.artifact_name }}
+
+  # Create GitHub Release with binaries
+  create-release:
+    name: Create Release
+    needs: build-binaries
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.get_version.outputs.version }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Get version from tag
+        id: get_version
+        run: echo "version=${GITHUB_REF#refs/tags/v}" >> $GITHUB_OUTPUT
+
+      - name: Download all binary artifacts
+        uses: actions/download-artifact@v4
+        with:
+          pattern: binary-*
+          path: binaries
+
+      - name: Prepare release assets
+        run: |
+          mkdir -p release-assets
+          # Rename binaries for release
+          for dir in binaries/binary-*/; do
+            target=$(basename "$dir" | sed 's/binary-//')
+            for file in "$dir"/*; do
+              filename=$(basename "$file")
+              if [[ "$filename" == *.exe ]]; then
+                cp "$file" "release-assets/fluorite-${target}.exe"
+              else
+                cp "$file" "release-assets/fluorite-${target}"
+                chmod +x "release-assets/fluorite-${target}"
+              fi
+            done
+          done
+          ls -la release-assets/
+
+      - name: Create Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: release-assets/*
+          generate_release_notes: true
+          draft: false
+          prerelease: ${{ contains(github.ref, '-') }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  # Publish to crates.io
+  publish-crates:
+    name: Publish to crates.io
+    needs: create-release
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Publish fluorite (runtime) to crates.io
+        run: cargo publish --package fluorite --token ${{ secrets.CRATES_IO_TOKEN }}
+
+      - name: Wait for crates.io to index
+        run: sleep 30
+
+      - name: Publish fluorite_codegen to crates.io
+        run: cargo publish --package fluorite_codegen --token ${{ secrets.CRATES_IO_TOKEN }}
+
+  # Publish platform-specific npm packages
+  publish-npm-platforms:
+    name: Publish npm (${{ matrix.npm_package }})
+    needs: [build-binaries, create-release]
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        npm_package:
+          - fluorite-darwin-x64
+          - fluorite-darwin-arm64
+          - fluorite-linux-x64
+          - fluorite-linux-arm64
+          - fluorite-win32-x64
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          registry-url: 'https://registry.npmjs.org'
+
+      - name: Download npm package artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: ${{ matrix.npm_package }}
+          path: npm/${{ matrix.npm_package }}
+
+      - name: Update package version
+        run: |
+          cd npm/${{ matrix.npm_package }}
+          npm version ${{ needs.create-release.outputs.version }} --no-git-tag-version --allow-same-version
+
+      - name: Publish to npm
+        run: |
+          cd npm/${{ matrix.npm_package }}
+          npm publish --access public
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+
+  # Publish main npm package (after platform packages)
+  publish-npm-main:
+    name: Publish npm (fluorite-cli)
+    needs: [publish-npm-platforms, create-release]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          registry-url: 'https://registry.npmjs.org'
+
+      - name: Update package version
+        run: |
+          cd npm/fluorite-cli
+          VERSION=${{ needs.create-release.outputs.version }}
+          npm version $VERSION --no-git-tag-version --allow-same-version
+          # Update optionalDependencies versions
+          node -e "
+            const fs = require('fs');
+            const pkg = JSON.parse(fs.readFileSync('package.json', 'utf8'));
+            for (const dep of Object.keys(pkg.optionalDependencies || {})) {
+              pkg.optionalDependencies[dep] = '$VERSION';
+            }
+            fs.writeFileSync('package.json', JSON.stringify(pkg, null, 2) + '\n');
+          "
+
+      - name: Publish to npm
+        run: |
+          cd npm/fluorite-cli
+          npm publish --access public
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}

@@ -1,0 +1,21 @@
+{
+  "name": "@zhxiaogg/fluorite-win32-x64",
+  "version": "0.1.9",
+  "description": "Fluorite CLI binary for Windows x64",
+  "os": [
+    "win32"
+  ],
+  "cpu": [
+    "x64"
+  ],
+  "main": "bin/fluorite.exe",
+  "files": [
+    "bin/fluorite.exe"
+  ],
+  "preferUnplugged": true,
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/blossomstack/fluorite.git"
+  }
+}
