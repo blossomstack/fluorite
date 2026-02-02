@@ -21,7 +21,7 @@ impl<T> Spanned<T> {
 /// A complete .fl file
 #[derive(Debug, Clone)]
 pub struct AstFile {
-    pub package: Spanned<String>,
+    pub package: Vec<Spanned<String>>,
     pub uses: Vec<AstUse>,
     pub items: Vec<AstItem>,
 }

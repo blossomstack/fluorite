@@ -160,7 +160,8 @@ mod tests {
         assert!(result.is_ok());
 
         let ast = result.unwrap();
-        assert_eq!(ast.package.value, "test");
+        assert_eq!(ast.package.len(), 1);
+        assert_eq!(ast.package[0].value, "test");
         assert_eq!(ast.items.len(), 1);
     }
 

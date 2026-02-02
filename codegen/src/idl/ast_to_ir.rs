@@ -38,7 +38,12 @@ impl AstToIrConverter {
         let mut packages: HashMap<String, IRPackage> = HashMap::new();
 
         for file in files {
-            let package_name = file.package.value.clone();
+            let package_name = file
+                .package
+                .iter()
+                .map(|s| s.value.as_str())
+                .collect::<Vec<_>>()
+                .join(".");
 
             let package = packages
                 .entry(package_name.clone())
@@ -422,5 +427,55 @@ mod tests {
             }
             _ => panic!("Expected struct"),
         }
+    }
+
+    #[test]
+    fn test_convert_simple_package() {
+        let source = r#"
+            package users;
+            struct User {
+                name: String,
+            }
+        "#;
+        let ast = parse_file(source).unwrap();
+        let converter = AstToIrConverter::new();
+        let schema = converter.convert_files(&[ast]).unwrap();
+
+        assert!(schema.packages.contains_key("users"));
+        assert_eq!(schema.packages.len(), 1);
+    }
+
+    #[test]
+    fn test_convert_dotted_package() {
+        let source = r#"
+            package com.example.users;
+            struct User {
+                name: String,
+            }
+        "#;
+        let ast = parse_file(source).unwrap();
+        let converter = AstToIrConverter::new();
+        let schema = converter.convert_files(&[ast]).unwrap();
+
+        assert!(schema.packages.contains_key("com.example.users"));
+        assert_eq!(schema.packages.len(), 1);
+
+        let package = schema.packages.get("com.example.users").unwrap();
+        assert_eq!(package.name, "com.example.users");
+        assert_eq!(package.types.len(), 1);
+    }
+
+    #[test]
+    fn test_convert_deep_dotted_package() {
+        let source = r#"
+            package a.b.c.d.e.f;
+            struct Data {}
+        "#;
+        let ast = parse_file(source).unwrap();
+        let converter = AstToIrConverter::new();
+        let schema = converter.convert_files(&[ast]).unwrap();
+
+        assert!(schema.packages.contains_key("a.b.c.d.e.f"));
+        assert_eq!(schema.packages.len(), 1);
     }
 }

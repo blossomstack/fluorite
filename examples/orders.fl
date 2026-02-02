@@ -1,7 +1,8 @@
 /// Order management types
-package orders;
+package com.example.orders;
 
-use users::User;
+use com.example.users.User;
+use com.example.users.UserStatus;
 
 /// Represents a customer order
 struct Order {

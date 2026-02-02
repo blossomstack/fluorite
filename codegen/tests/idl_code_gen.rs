@@ -24,7 +24,10 @@ fn test_parse_users_fl() {
     );
 
     let ast = result.unwrap();
-    assert_eq!(ast.package.value, "users");
+    assert_eq!(ast.package.len(), 3);
+    assert_eq!(ast.package[0].value, "com");
+    assert_eq!(ast.package[1].value, "example");
+    assert_eq!(ast.package[2].value, "users");
     assert_eq!(ast.items.len(), 3); // User, UserStatus, UserList
 }
 
@@ -39,11 +42,18 @@ fn test_parse_orders_fl() {
     );
 
     let ast = result.unwrap();
-    assert_eq!(ast.package.value, "orders");
-    assert_eq!(ast.uses.len(), 1);
-    assert_eq!(ast.uses[0].path.len(), 2);
-    assert_eq!(ast.uses[0].path[0].value, "users");
-    assert_eq!(ast.uses[0].path[1].value, "User");
+    assert_eq!(ast.package.len(), 3);
+    assert_eq!(ast.package[0].value, "com");
+    assert_eq!(ast.package[1].value, "example");
+    assert_eq!(ast.package[2].value, "orders");
+    assert_eq!(ast.uses.len(), 2);
+    assert_eq!(ast.uses[0].path.len(), 4);
+    assert_eq!(ast.uses[0].path[0].value, "com");
+    assert_eq!(ast.uses[0].path[1].value, "example");
+    assert_eq!(ast.uses[0].path[2].value, "users");
+    assert_eq!(ast.uses[0].path[3].value, "User");
+    assert_eq!(ast.uses[1].path.len(), 4);
+    assert_eq!(ast.uses[1].path[3].value, "UserStatus");
 }
 
 #[test]

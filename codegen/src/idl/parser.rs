@@ -41,27 +41,24 @@ fn file_parser() -> impl Parser<Token, AstFile, Error = ParseError> {
         .then_ignore(end())
 }
 
-/// Parser for package statement: `package name;`
-fn package_stmt() -> impl Parser<Token, Spanned<String>, Error = ParseError> {
+/// Parser for dotted path: `foo.bar.baz`
+fn dotted_path() -> impl Parser<Token, Vec<Spanned<String>>, Error = ParseError> {
+    ident().separated_by(just(Token::Dot)).at_least(1).collect()
+}
+
+/// Parser for package statement: `package com.example.users;`
+fn package_stmt() -> impl Parser<Token, Vec<Spanned<String>>, Error = ParseError> {
     just(Token::Package)
-        .ignore_then(ident())
+        .ignore_then(dotted_path())
         .then_ignore(just(Token::Semi))
 }
 
-/// Parser for use statement: `use path::to::Type;`
+/// Parser for use statement: `use com.example.users.User;`
 fn use_stmt() -> impl Parser<Token, AstUse, Error = ParseError> {
     just(Token::Use)
-        .ignore_then(use_path())
+        .ignore_then(dotted_path())
         .then_ignore(just(Token::Semi))
         .map_with_span(|path, span| AstUse { path, span })
-}
-
-/// Parser for use path: `foo::bar::Type`
-fn use_path() -> impl Parser<Token, Vec<Spanned<String>>, Error = ParseError> {
-    ident()
-        .separated_by(just(Token::DoubleColon))
-        .at_least(1)
-        .collect()
 }
 
 /// Parser for any top-level item
@@ -359,27 +356,68 @@ mod tests {
     use super::*;
 
     #[test]
-    fn test_parse_package() {
+    fn test_parse_simple_package() {
         let source = "package orders;";
         let result = parse_file(source);
         assert!(result.is_ok());
         let ast = result.unwrap();
-        assert_eq!(ast.package.value, "orders");
+        assert_eq!(ast.package.len(), 1);
+        assert_eq!(ast.package[0].value, "orders");
+    }
+
+    #[test]
+    fn test_parse_dotted_package() {
+        let source = "package com.example.users;";
+        let result = parse_file(source);
+        assert!(result.is_ok(), "{:?}", result.err());
+        let ast = result.unwrap();
+        assert_eq!(ast.package.len(), 3);
+        assert_eq!(ast.package[0].value, "com");
+        assert_eq!(ast.package[1].value, "example");
+        assert_eq!(ast.package[2].value, "users");
+    }
+
+    #[test]
+    fn test_parse_deep_dotted_path() {
+        let source = "package a.b.c.d.e.f;";
+        let result = parse_file(source);
+        assert!(result.is_ok(), "{:?}", result.err());
+        let ast = result.unwrap();
+        assert_eq!(ast.package.len(), 6);
+        assert_eq!(ast.package[0].value, "a");
+        assert_eq!(ast.package[5].value, "f");
     }
 
     #[test]
     fn test_parse_use() {
         let source = r#"
             package test;
-            use users::User;
+            use com.example.users.User;
         "#;
         let result = parse_file(source);
         assert!(result.is_ok());
         let ast = result.unwrap();
         assert_eq!(ast.uses.len(), 1);
-        assert_eq!(ast.uses[0].path.len(), 2);
-        assert_eq!(ast.uses[0].path[0].value, "users");
-        assert_eq!(ast.uses[0].path[1].value, "User");
+        assert_eq!(ast.uses[0].path.len(), 4);
+        assert_eq!(ast.uses[0].path[0].value, "com");
+        assert_eq!(ast.uses[0].path[1].value, "example");
+        assert_eq!(ast.uses[0].path[2].value, "users");
+        assert_eq!(ast.uses[0].path[3].value, "User");
+    }
+
+    #[test]
+    fn test_parse_dotted_use() {
+        let source = r#"
+            package test;
+            use com.example.users.User;
+            use com.example.orders.Order;
+        "#;
+        let result = parse_file(source);
+        assert!(result.is_ok(), "{:?}", result.err());
+        let ast = result.unwrap();
+        assert_eq!(ast.uses.len(), 2);
+        assert_eq!(ast.uses[0].path.len(), 4);
+        assert_eq!(ast.uses[1].path.len(), 4);
     }
 
     #[test]

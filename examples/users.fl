@@ -1,5 +1,5 @@
 /// User management types
-package users;
+package com.example.users;
 
 /// Represents a user in the system
 struct User {

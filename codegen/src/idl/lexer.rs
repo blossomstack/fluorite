@@ -92,8 +92,8 @@ pub enum Token {
     Semi,
     #[token(":")]
     Colon,
-    #[token("::")]
-    DoubleColon,
+    #[token(".")]
+    Dot,
     #[token(",")]
     Comma,
     #[token("=")]
@@ -143,7 +143,7 @@ impl std::fmt::Display for Token {
             Token::RBracket => write!(f, "]"),
             Token::Semi => write!(f, ";"),
             Token::Colon => write!(f, ":"),
-            Token::DoubleColon => write!(f, "::"),
+            Token::Dot => write!(f, "."),
             Token::Comma => write!(f, ","),
             Token::Eq => write!(f, "="),
             Token::Hash => write!(f, "#"),
@@ -209,7 +209,7 @@ mod tests {
 
     #[test]
     fn test_punctuation() {
-        let tokens = lex("{ } ( ) < > [ ] ; : :: , = #");
+        let tokens = lex("{ } ( ) < > [ ] ; : . , = #");
         assert_eq!(
             tokens,
             vec![
@@ -223,10 +223,43 @@ mod tests {
                 Token::RBracket,
                 Token::Semi,
                 Token::Colon,
-                Token::DoubleColon,
+                Token::Dot,
                 Token::Comma,
                 Token::Eq,
                 Token::Hash,
+            ]
+        );
+    }
+
+    #[test]
+    fn test_dot_token() {
+        assert_eq!(lex("."), vec![Token::Dot]);
+    }
+
+    #[test]
+    fn test_dotted_identifier() {
+        let tokens = lex("foo.bar");
+        assert_eq!(
+            tokens,
+            vec![
+                Token::Ident("foo".to_string()),
+                Token::Dot,
+                Token::Ident("bar".to_string()),
+            ]
+        );
+    }
+
+    #[test]
+    fn test_dotted_path() {
+        let tokens = lex("com.example.users");
+        assert_eq!(
+            tokens,
+            vec![
+                Token::Ident("com".to_string()),
+                Token::Dot,
+                Token::Ident("example".to_string()),
+                Token::Dot,
+                Token::Ident("users".to_string()),
             ]
         );
     }
@@ -276,13 +309,17 @@ mod tests {
 
     #[test]
     fn test_use_statement() {
-        let tokens = lex("use users::User;");
+        let tokens = lex("use com.example.users.User;");
         assert_eq!(
             tokens,
             vec![
                 Token::Use,
+                Token::Ident("com".to_string()),
+                Token::Dot,
+                Token::Ident("example".to_string()),
+                Token::Dot,
                 Token::Ident("users".to_string()),
-                Token::DoubleColon,
+                Token::Dot,
                 Token::Ident("User".to_string()),
                 Token::Semi,
             ]
