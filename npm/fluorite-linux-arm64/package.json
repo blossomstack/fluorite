@@ -1,6 +1,6 @@
 {
   "name": "@zhxiaogg/fluorite-linux-arm64",
-  "version": "0.1.9",
+  "version": "0.2.0",
   "description": "Fluorite CLI binary for Linux ARM64",
   "os": [
     "linux"
