@@ -4,7 +4,7 @@ use fluorite_codegen::code_gen::{
     fs::{FileSystem, FsWriter, MemoryFileSystem},
     ir::{
         IREnum, IRField, IRFieldType, IRPackage, IRPrimitive, IRSchema, IRStruct, IRType,
-        IRTypeAlias, IRTypeAliasTarget, IRUnion, IRUnionStyle, IRUnionVariant,
+        IRTypeAlias, IRTypeAliasTarget, IRUnion, IRUnionVariant,
     },
     rust::{RustOptions, RustTemplateGenerator, Visibility},
     validation::{ValidationError, Validator},
@@ -133,8 +133,8 @@ fn test_full_integration() -> anyhow::Result<()> {
         "Should have OrderMap"
     );
     assert!(
-        orders_content.contains("#[serde(tag = \"type\")]"),
-        "Should have tagged union"
+        orders_content.contains("#[serde(tag = \"type\", content = \"value\")]"),
+        "Should have adjacently tagged union"
     );
     assert!(
         orders_content.contains("pub enum Address"),
@@ -316,27 +316,11 @@ mod ir_type_tests {
         let ir_type = IRType::Struct(IRStruct {
             name: "User".to_string(),
             fields: vec![],
-            is_union_variant: false,
             doc: None,
             rename_all: None,
             deny_unknown_fields: false,
         });
         assert_eq!(ir_type.name(), "User");
-        assert!(!ir_type.is_internal());
-    }
-
-    #[test]
-    fn test_struct_union_variant_is_internal() {
-        let ir_type = IRType::Struct(IRStruct {
-            name: "PostCode".to_string(),
-            fields: vec![],
-            is_union_variant: true,
-            doc: None,
-            rename_all: None,
-            deny_unknown_fields: false,
-        });
-        assert_eq!(ir_type.name(), "PostCode");
-        assert!(ir_type.is_internal());
     }
 
     #[test]
@@ -347,7 +331,6 @@ mod ir_type_tests {
             doc: None,
         });
         assert_eq!(ir_type.name(), "Status");
-        assert!(!ir_type.is_internal());
     }
 
     #[test]
@@ -355,12 +338,11 @@ mod ir_type_tests {
         let ir_type = IRType::Union(IRUnion {
             name: "Address".to_string(),
             tag_field: "type".to_string(),
+            content_field: "value".to_string(),
             variants: vec![],
-            style: IRUnionStyle::Inline,
             doc: None,
         });
         assert_eq!(ir_type.name(), "Address");
-        assert!(!ir_type.is_internal());
     }
 
     #[test]
@@ -371,7 +353,6 @@ mod ir_type_tests {
             doc: None,
         });
         assert_eq!(ir_type.name(), "OrderList");
-        assert!(!ir_type.is_internal());
     }
 }
 
@@ -385,14 +366,11 @@ mod ir_union_variant_tests {
     }
 
     #[test]
-    fn test_inline_variant_name() {
-        let variant = IRUnionVariant::Inline("PostCode".to_string(), vec![]);
-        assert_eq!(variant.name(), "PostCode");
-    }
-
-    #[test]
     fn test_newtype_variant_name() {
-        let variant = IRUnionVariant::Newtype("Info".to_string(), "AddressInfo".to_string());
+        let variant = IRUnionVariant::Newtype(
+            "Info".to_string(),
+            IRFieldType::Custom("AddressInfo".to_string()),
+        );
         assert_eq!(variant.name(), "Info");
     }
 }
@@ -433,7 +411,6 @@ mod validator_tests {
                         flatten: false,
                         deprecated: false,
                     }],
-                    is_union_variant: false,
                     doc: None,
                     rename_all: None,
                     deny_unknown_fields: false,
@@ -474,7 +451,6 @@ mod validator_tests {
                     flatten: false,
                     deprecated: false,
                 }],
-                is_union_variant: false,
                 doc: None,
                 rename_all: None,
                 deny_unknown_fields: false,
@@ -503,7 +479,6 @@ mod validator_tests {
                 IRType::Struct(IRStruct {
                     name: "User".to_string(),
                     fields: vec![],
-                    is_union_variant: false,
                     doc: None,
                     rename_all: None,
                     deny_unknown_fields: false,
@@ -511,7 +486,6 @@ mod validator_tests {
                 IRType::Struct(IRStruct {
                     name: "User".to_string(),
                     fields: vec![],
-                    is_union_variant: false,
                     doc: None,
                     rename_all: None,
                     deny_unknown_fields: false,
@@ -556,8 +530,8 @@ mod validator_tests {
             vec![IRType::Union(IRUnion {
                 name: "EmptyUnion".to_string(),
                 tag_field: "type".to_string(),
+                content_field: "value".to_string(),
                 variants: vec![],
-                style: IRUnionStyle::Inline,
                 doc: None,
             })],
         )]);
@@ -571,38 +545,17 @@ mod validator_tests {
     }
 
     #[test]
-    fn test_unknown_type_in_union_inline_variant() {
-        let schema = create_schema(vec![(
-            "test".to_string(),
-            vec![IRType::Union(IRUnion {
-                name: "TestUnion".to_string(),
-                tag_field: "type".to_string(),
-                variants: vec![IRUnionVariant::Inline("NonExistent".to_string(), vec![])],
-                style: IRUnionStyle::Inline,
-                doc: None,
-            })],
-        )]);
-
-        let errors = Validator::new().validate(&schema);
-        assert_eq!(errors.len(), 1);
-        assert!(matches!(
-            &errors[0],
-            ValidationError::UnknownType { type_name, .. } if type_name == "NonExistent"
-        ));
-    }
-
-    #[test]
     fn test_unknown_type_in_union_newtype_variant() {
         let schema = create_schema(vec![(
             "test".to_string(),
             vec![IRType::Union(IRUnion {
                 name: "TestUnion".to_string(),
                 tag_field: "type".to_string(),
+                content_field: "value".to_string(),
                 variants: vec![IRUnionVariant::Newtype(
                     "Var".to_string(),
-                    "NonExistent".to_string(),
+                    IRFieldType::Custom("NonExistent".to_string()),
                 )],
-                style: IRUnionStyle::Extern,
                 doc: None,
             })],
         )]);
@@ -688,7 +641,6 @@ mod validator_tests {
                 vec![IRType::Struct(IRStruct {
                     name: "TypeA".to_string(),
                     fields: vec![],
-                    is_union_variant: false,
                     doc: None,
                     rename_all: None,
                     deny_unknown_fields: false,
@@ -712,7 +664,6 @@ mod validator_tests {
                         flatten: false,
                         deprecated: false,
                     }],
-                    is_union_variant: false,
                     doc: None,
                     rename_all: None,
                     deny_unknown_fields: false,
@@ -764,7 +715,6 @@ mod validator_tests {
                         deprecated: false,
                     },
                 ],
-                is_union_variant: false,
                 doc: None,
                 rename_all: None,
                 deny_unknown_fields: false,
@@ -782,11 +732,11 @@ mod validator_tests {
             vec![IRType::Union(IRUnion {
                 name: "TestUnion".to_string(),
                 tag_field: "type".to_string(),
+                content_field: "value".to_string(),
                 variants: vec![
                     IRUnionVariant::Unit("UnitA".to_string()),
                     IRUnionVariant::Unit("UnitB".to_string()),
                 ],
-                style: IRUnionStyle::Inline,
                 doc: None,
             })],
         )]);
@@ -1109,8 +1059,8 @@ mod template_generator_tests {
 
         let content = fs.get_string("/output/test/orders/mod.rs").unwrap();
         assert!(
-            content.contains("#[serde(tag = \"type\")]"),
-            "Should have serde tag"
+            content.contains("#[serde(tag = \"type\", content = \"value\")]"),
+            "Should have adjacently tagged union"
         );
 
         Ok(())
@@ -1273,7 +1223,6 @@ fn create_test_schema() -> IRSchema {
                         deprecated: false,
                     },
                 ],
-                is_union_variant: false,
                 doc: None,
                 rename_all: None,
                 deny_unknown_fields: false,
@@ -1364,7 +1313,6 @@ fn create_test_schema() -> IRSchema {
                         deprecated: false,
                     },
                 ],
-                is_union_variant: false,
                 doc: None,
                 rename_all: None,
                 deny_unknown_fields: false,
@@ -1415,99 +1363,114 @@ fn create_test_schema() -> IRSchema {
                         deprecated: false,
                     },
                 ],
-                is_union_variant: false,
                 doc: None,
                 rename_all: None,
                 deny_unknown_fields: false,
             }),
+            // Address union with adjacently tagged format
             IRType::Union(IRUnion {
                 name: "Address".to_string(),
                 tag_field: "type".to_string(),
+                content_field: "value".to_string(),
                 variants: vec![
                     IRUnionVariant::Unit("Empty".to_string()),
-                    IRUnionVariant::Inline(
+                    IRUnionVariant::Newtype(
                         "PostCode".to_string(),
-                        vec![
-                            IRField {
-                                name: "code".to_string(),
-                                field_type: IRFieldType::Primitive(IRPrimitive::String),
-                                is_optional: false,
-                                is_boxed: false,
-                                rename: None,
-                                doc: None,
-                                alias: vec![],
-                                default: None,
-                                skip_if_none: false,
-                                skip_if_default: false,
-                                flatten: false,
-                                deprecated: false,
-                            },
-                            IRField {
-                                name: "order".to_string(),
-                                field_type: IRFieldType::Custom("Order".to_string()),
-                                is_optional: false,
-                                is_boxed: false,
-                                rename: None,
-                                doc: None,
-                                alias: vec![],
-                                default: None,
-                                skip_if_none: false,
-                                skip_if_default: false,
-                                flatten: false,
-                                deprecated: false,
-                            },
-                            IRField {
-                                name: "instruction".to_string(),
-                                field_type: IRFieldType::Any,
-                                is_optional: false,
-                                is_boxed: false,
-                                rename: None,
-                                doc: None,
-                                alias: vec![],
-                                default: None,
-                                skip_if_none: false,
-                                skip_if_default: false,
-                                flatten: false,
-                                deprecated: false,
-                            },
-                        ],
+                        IRFieldType::Custom("PostCodeData".to_string()),
                     ),
-                    IRUnionVariant::Inline(
+                    IRUnionVariant::Newtype(
                         "AddressInfo".to_string(),
-                        vec![
-                            IRField {
-                                name: "first_line".to_string(),
-                                field_type: IRFieldType::Primitive(IRPrimitive::String),
-                                is_optional: false,
-                                is_boxed: false,
-                                rename: None,
-                                doc: None,
-                                alias: vec![],
-                                default: None,
-                                skip_if_none: false,
-                                skip_if_default: false,
-                                flatten: false,
-                                deprecated: false,
-                            },
-                            IRField {
-                                name: "second_line".to_string(),
-                                field_type: IRFieldType::Primitive(IRPrimitive::String),
-                                is_optional: false,
-                                is_boxed: false,
-                                rename: None,
-                                doc: None,
-                                alias: vec![],
-                                default: None,
-                                skip_if_none: false,
-                                skip_if_default: false,
-                                flatten: false,
-                                deprecated: false,
-                            },
-                        ],
+                        IRFieldType::Custom("AddressInfoData".to_string()),
                     ),
                 ],
-                style: IRUnionStyle::Inline,
                 doc: None,
+            }),
+            // Struct types used by union variants
+            IRType::Struct(IRStruct {
+                name: "PostCodeData".to_string(),
+                fields: vec![
+                    IRField {
+                        name: "code".to_string(),
+                        field_type: IRFieldType::Primitive(IRPrimitive::String),
+                        is_optional: false,
+                        is_boxed: false,
+                        rename: None,
+                        doc: None,
+                        alias: vec![],
+                        default: None,
+                        skip_if_none: false,
+                        skip_if_default: false,
+                        flatten: false,
+                        deprecated: false,
+                    },
+                    IRField {
+                        name: "order".to_string(),
+                        field_type: IRFieldType::Custom("Order".to_string()),
+                        is_optional: false,
+                        is_boxed: false,
+                        rename: None,
+                        doc: None,
+                        alias: vec![],
+                        default: None,
+                        skip_if_none: false,
+                        skip_if_default: false,
+                        flatten: false,
+                        deprecated: false,
+                    },
+                    IRField {
+                        name: "instruction".to_string(),
+                        field_type: IRFieldType::Any,
+                        is_optional: false,
+                        is_boxed: false,
+                        rename: None,
+                        doc: None,
+                        alias: vec![],
+                        default: None,
+                        skip_if_none: false,
+                        skip_if_default: false,
+                        flatten: false,
+                        deprecated: false,
+                    },
+                ],
+                doc: None,
+                rename_all: None,
+                deny_unknown_fields: false,
+            }),
+            IRType::Struct(IRStruct {
+                name: "AddressInfoData".to_string(),
+                fields: vec![
+                    IRField {
+                        name: "first_line".to_string(),
+                        field_type: IRFieldType::Primitive(IRPrimitive::String),
+                        is_optional: false,
+                        is_boxed: false,
+                        rename: None,
+                        doc: None,
+                        alias: vec![],
+                        default: None,
+                        skip_if_none: false,
+                        skip_if_default: false,
+                        flatten: false,
+                        deprecated: false,
+                    },
+                    IRField {
+                        name: "second_line".to_string(),
+                        field_type: IRFieldType::Primitive(IRPrimitive::String),
+                        is_optional: false,
+                        is_boxed: false,
+                        rename: None,
+                        doc: None,
+                        alias: vec![],
+                        default: None,
+                        skip_if_none: false,
+                        skip_if_default: false,
+                        flatten: false,
+                        deprecated: false,
+                    },
+                ],
+                doc: None,
+                rename_all: None,
+                deny_unknown_fields: false,
             }),
             IRType::TypeAlias(IRTypeAlias {
                 name: "OrderList".to_string(),

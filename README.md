@@ -44,17 +44,20 @@ enum UserStatus {
     Inactive,
 }
 
-/// Tagged union for polymorphic types
+/// Tagged union for polymorphic types (adjacently tagged: {type: "...", value: ...})
+#[type_tag = "type"]
 union UserEvent {
     Created(User),
-    Deleted(Uuid),
+    Updated(User),
+    Deleted,                 // Unit variant: {type: "Deleted"}
+    StatusChanged(StatusChange),
 }
 
 /// Type alias
 type UserList = Vec<User>;
 ```
 
-See [examples/users.fl](examples/users.fl) and [examples/orders.fl](examples/orders.fl) for complete examples.
+See the [demo project](examples/demo/fluorite/) for complete multi-file examples with cross-package imports.
 
 ## Using `fluorite` as a CLI
 
@@ -224,10 +227,40 @@ TypeScriptOptions::new(output_dir)
 ### Custom Types
 - `struct` - Object definitions
 - `enum` - Enum definitions
-- `union` - Polymorphic tagged unions
+- `union` - Adjacently tagged unions (see below)
 - `type` - Type aliases
 - `Option<T>` - Optional fields
 - `Any` - Dynamic JSON-like values
+
+### Tagged Unions
+
+Fluorite uses **adjacently tagged** format for unions, producing consistent JSON for both Rust and TypeScript:
+
+```rust
+// IDL
+#[type_tag = "type"]       // Tag field name (default: "type")
+#[content_tag = "value"]   // Content field name (default: "value")
+union Event {
+    Created(User),         // Newtype: {type: "Created", value: {...}}
+    Deleted,               // Unit: {type: "Deleted"}
+}
+```
+
+**Rust output:**
+```rust
+#[serde(tag = "type", content = "value")]
+pub enum Event {
+    Created(User),
+    Deleted,
+}
+```
+
+**TypeScript output:**
+```typescript
+export type Event =
+  | { type: "Created"; value: User }
+  | { type: "Deleted" };
+```
 
 ### Attributes
 - `#[rename = "value"]` - Field/type renaming
@@ -237,6 +270,8 @@ TypeScriptOptions::new(output_dir)
 - `#[skip_if_none]`, `#[skip_if_default]` - Conditional serialization
 - `#[flatten]` - Flatten nested structures
 - `#[deprecated]` - Deprecation notices
+- `#[type_tag = "type"]` - Union tag field name
+- `#[content_tag = "value"]` - Union content field name
 
 ## Development
 

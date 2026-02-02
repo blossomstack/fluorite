@@ -1,0 +1,49 @@
+/// Common types shared across the demo packages
+package demo.common;
+
+/// API response wrapper
+#[rename_all = "camelCase"]
+struct ApiResponse {
+    /// Whether the request was successful
+    success: bool,
+    /// Response data (dynamic JSON)
+    data: Option<Any>,
+    /// Error message (only present on failure)
+    #[skip_if_none]
+    error_message: Option<String>,
+    /// Error code (only present on failure)
+    #[skip_if_none]
+    error_code: Option<String>,
+    /// Request ID for tracing
+    request_id: String,
+}
+
+/// Pagination metadata
+#[rename_all = "camelCase"]
+struct Pagination {
+    /// Current page number (1-indexed)
+    page: u32,
+    /// Number of items per page
+    per_page: u32,
+    /// Total number of items
+    total_items: u64,
+    /// Total number of pages
+    total_pages: u32,
+}
+
+/// Address type used by multiple domains
+#[rename_all = "camelCase"]
+struct Address {
+    /// Street address line 1
+    street1: String,
+    /// Street address line 2 (optional)
+    street2: Option<String>,
+    /// City
+    city: String,
+    /// State or province
+    state: String,
+    /// Postal code
+    postal_code: String,
+    /// Country code (ISO 3166-1 alpha-2)
+    country: String,
+}

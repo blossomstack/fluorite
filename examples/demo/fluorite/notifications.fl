@@ -1,0 +1,71 @@
+/// Notification types
+package demo.notifications;
+
+/// A notification message (adjacently tagged: {type: "...", value: ...})
+#[type_tag = "type"]
+union Message {
+    PlainText(String),
+    UserNotification(UserNotification),
+    OrderNotification(OrderNotification),
+    SystemAlert(SystemAlert),
+}
+
+/// User-related notification
+#[rename_all = "camelCase"]
+struct UserNotification {
+    title: String,
+    body: String,
+    user_id: String,
+    action_url: Option<String>,
+}
+
+/// Order-related notification
+#[rename_all = "camelCase"]
+struct OrderNotification {
+    title: String,
+    body: String,
+    order_id: String,
+    action_url: Option<String>,
+}
+
+/// System alert
+#[rename_all = "camelCase"]
+struct SystemAlert {
+    title: String,
+    body: String,
+    severity: AlertSeverity,
+    expires_at: Option<String>,
+}
+
+/// Alert severity levels
+enum AlertSeverity {
+    Info,
+    Warning,
+    Error,
+    Critical,
+}
+
+/// Notification delivery status
+enum DeliveryStatus {
+    Pending,
+    Sent,
+    Delivered,
+    Failed,
+    Read,
+}
+
+/// A queued notification with delivery tracking
+#[rename_all = "camelCase"]
+struct QueuedNotification {
+    id: String,
+    message: Message,
+    recipient_id: String,
+    status: DeliveryStatus,
+    created_at: String,
+    sent_at: Option<String>,
+    delivered_at: Option<String>,
+    read_at: Option<String>,
+}
+
+/// List of queued notifications
+type NotificationQueue = Vec<QueuedNotification>;

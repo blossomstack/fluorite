@@ -67,24 +67,22 @@ pub struct EnumTemplate {
 /// Union variant types for template
 #[derive(Clone)]
 pub enum UnionVariantTemplate {
+    /// Unit variant: no data
     Unit(String),
-    Inline {
-        name: String,
-        fields: Vec<FieldTemplate>,
-    },
-    Newtype {
-        name: String,
-        type_str: String,
-    },
+    /// Newtype variant: wraps a value
+    Newtype { name: String, type_str: String },
 }
 
-/// Template for rendering a union (tagged enum)
+/// Template for rendering a union (adjacently tagged enum)
 #[derive(Template)]
 #[template(path = "rust/union.rs.j2")]
 pub struct UnionTemplate {
     pub derives: String,
     pub name: String,
+    /// Tag field name (e.g., "type")
     pub tag_field: String,
+    /// Content field name (e.g., "value")
+    pub content_field: String,
     pub variants: Vec<UnionVariantTemplate>,
 }
 

@@ -88,7 +88,6 @@ types:
     type_tag: "field"  # for Union (tagged union discriminator)
     configs:
       rust_type_wrapper: Box
-      union_style: Inline|Extern
       rename: "json_name"
 ```
 
@@ -122,7 +121,7 @@ mod generated {
 
 ## Testing Examples
 
-The `examples/orders.yml` and `examples/users.yml` files are used by tests in `codegen/tests/rust_code_gen.rs` to verify code generation output.
+The demo projects in `examples/demo/` (Rust) and `examples/demo-ts/` (TypeScript) demonstrate multi-package .fl files with cross-package imports. These are used by the e2e tests to verify code generation output.
 
 ## New Template-Based Architecture (v2)
 
@@ -200,9 +199,13 @@ enum UserStatus {
     Inactive,
 }
 
+/// User lifecycle events (adjacently tagged union)
+#[type_tag = "type"]
 union UserEvent {
     Created(User),
-    Deleted(Uuid),
+    Updated(User),
+    Deleted,
+    StatusChanged(UserStatusChange),
 }
 
 type UserList = Vec<User>;
@@ -211,14 +214,64 @@ type UserList = Vec<User>;
 ### IDL Features
 
 - **Package declaration**: `package name;`
-- **Imports**: `use path::Type;`
+- **Imports**: `use path::Type;` (supports dotted paths: `use demo.common.Address;`)
 - **Structs**: `struct Name { fields }`
 - **Enums**: `enum Name { Variants }`
-- **Unions**: Tagged unions with variant types
+- **Unions**: Adjacently tagged unions (see Union Design below)
 - **Type aliases**: `type Name = Vec<T>;`
 - **Doc comments**: `/// Description`
-- **Attributes**: `#[rename = "value"]`
+- **Attributes**: `#[rename = "value"]`, `#[type_tag = "type"]`, `#[content_tag = "value"]`
 - **Generic types**: `Option<T>`, `Vec<T>`, `Map<K, V>`
+
+### Union Design (Adjacently Tagged)
+
+Fluorite uses **adjacently tagged** union format for both Rust and TypeScript, providing a simple and consistent serialization format.
+
+#### IDL Syntax
+```rust
+/// Event types (adjacently tagged: {type: "...", value: ...})
+#[type_tag = "type"]           // Tag field name (default: "type")
+#[content_tag = "value"]       // Content field name (default: "value")
+union UserEvent {
+    Created(User),             // Newtype variant: {type: "Created", value: User}
+    Updated(User),             // Newtype variant: {type: "Updated", value: User}
+    Deleted,                   // Unit variant: {type: "Deleted"}
+    StatusChanged(StatusChange),
+}
+```
+
+#### Rust Output
+```rust
+#[derive(Debug, Clone, PartialEq, serde::Serialize, serde::Deserialize)]
+#[serde(tag = "type", content = "value")]
+pub enum UserEvent {
+    Created(User),
+    Updated(User),
+    Deleted,
+    StatusChanged(StatusChange),
+}
+```
+
+#### TypeScript Output
+```typescript
+export type UserEvent =
+  | { type: "Created"; value: User }
+  | { type: "Updated"; value: User }
+  | { type: "Deleted" }
+  | { type: "StatusChanged"; value: StatusChange };
+```
+
+#### JSON Serialization Examples
+```json
+// Unit variant (no data)
+{"type": "Deleted"}
+
+// Newtype variant (wraps a value)
+{"type": "Created", "value": {"id": "user-001", "name": "John"}}
+
+// Primitive values work too
+{"type": "PlainText", "value": "Hello world!"}
+```
 
 ### Type Mapping (IDL → IR)
 
@@ -270,8 +323,11 @@ cargo run --package fluorite_codegen --bin fluorite -- ts \
 
 ### Example Files
 
-- `examples/users.fl` - User management types
-- `examples/orders.fl` - Order management types with imports
+The demo project (`examples/demo/fluorite/`) contains multi-file .fl examples:
+- `common.fl` - Shared types (Address, ApiResponse, Pagination)
+- `users.fl` - User management types, imports from common
+- `orders.fl` - Order management types, imports from common and users
+- `notifications.fl` - Notification types with adjacently tagged unions
 
 ## TypeScript Code Generation
 

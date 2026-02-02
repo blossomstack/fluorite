@@ -1,6 +1,5 @@
 //! Template-based Rust code generator using askama templates
 
-use std::collections::HashMap;
 use std::sync::Arc;
 
 use anyhow::{anyhow, Result};
@@ -9,7 +8,7 @@ use askama::Template;
 use crate::code_gen::fs::FileSystem;
 use crate::code_gen::ir::{
     IRField, IRFieldType, IRPrimitive, IRSchema, IRStruct, IRType, IRTypeAlias, IRTypeAliasTarget,
-    IRUnion, IRUnionStyle, IRUnionVariant,
+    IRUnion, IRUnionVariant,
 };
 use crate::code_gen::utils::to_snake_case;
 use crate::code_gen::validation::{ValidationError, Validator};
@@ -39,67 +38,12 @@ impl RustTemplateGenerator {
             return Err(self.format_validation_errors(&errors));
         }
 
-        // Resolve union variant fields
-        let schema = self.resolve_union_variants(schema.clone())?;
-
         // Generate code for each package
         for (package_name, package) in &schema.packages {
-            self.generate_package(package_name, &package.types, &schema)?;
+            self.generate_package(package_name, &package.types, schema)?;
         }
 
         Ok(())
-    }
-
-    fn resolve_union_variants(&self, mut schema: IRSchema) -> Result<IRSchema> {
-        // Collect all structs for lookup
-        let mut structs: HashMap<String, IRStruct> = HashMap::new();
-        for package in schema.packages.values() {
-            for ir_type in &package.types {
-                if let IRType::Struct(s) = ir_type {
-                    structs.insert(s.name.clone(), s.clone());
-                }
-            }
-        }
-
-        // Resolve inline union variants
-        for package in schema.packages.values_mut() {
-            for ir_type in &mut package.types {
-                if let IRType::Union(union) = ir_type {
-                    if union.style == IRUnionStyle::Inline {
-                        let mut resolved_variants = Vec::new();
-                        for variant in &union.variants {
-                            match variant {
-                                IRUnionVariant::Inline(name, fields) => {
-                                    // Only resolve if fields are empty (need resolution from struct)
-                                    if fields.is_empty() {
-                                        if let Some(struct_def) = structs.get(name) {
-                                            resolved_variants.push(IRUnionVariant::Inline(
-                                                name.clone(),
-                                                struct_def.fields.clone(),
-                                            ));
-                                        } else {
-                                            // Treat as unit variant if struct not found
-                                            resolved_variants
-                                                .push(IRUnionVariant::Unit(name.clone()));
-                                        }
-                                    } else {
-                                        // Fields already provided, keep as-is
-                                        resolved_variants.push(variant.clone());
-                                    }
-                                }
-                                other @ IRUnionVariant::Unit(_)
-                                | other @ IRUnionVariant::Newtype(..) => {
-                                    resolved_variants.push(other.clone())
-                                }
-                            }
-                        }
-                        union.variants = resolved_variants;
-                    }
-                }
-            }
-        }
-
-        Ok(schema)
     }
 
     fn generate_package(
@@ -118,7 +62,7 @@ impl RustTemplateGenerator {
             let mod_path = format!("{}/mod.rs", output_path);
             let mut content = String::new();
 
-            for ir_type in types.iter().filter(|t| !t.is_internal()) {
+            for ir_type in types.iter() {
                 content.push_str(&self.render_type(ir_type, schema)?);
             }
 
@@ -127,7 +71,7 @@ impl RustTemplateGenerator {
             // Generate each type in separate file + mod.rs
             let mut modules = Vec::new();
 
-            for ir_type in types.iter().filter(|t| !t.is_internal()) {
+            for ir_type in types.iter() {
                 let file_name = to_snake_case(ir_type.name());
                 let file_path = format!("{}/{}.rs", output_path, file_name);
                 let content = self.render_type(ir_type, schema)?;
@@ -198,6 +142,7 @@ impl RustTemplateGenerator {
             derives: self.options.get_derives_string(),
             name: u.name.clone(),
             tag_field: u.tag_field.clone(),
+            content_field: u.content_field.clone(),
             variants,
         };
 
@@ -257,19 +202,8 @@ impl RustTemplateGenerator {
     ) -> Result<UnionVariantTemplate> {
         match variant {
             IRUnionVariant::Unit(name) => Ok(UnionVariantTemplate::Unit(name.clone())),
-            IRUnionVariant::Inline(name, fields) => {
-                let field_templates: Vec<FieldTemplate> = fields
-                    .iter()
-                    .map(|f| self.convert_field(f, schema))
-                    .collect::<Result<Vec<_>>>()?;
-
-                Ok(UnionVariantTemplate::Inline {
-                    name: name.clone(),
-                    fields: field_templates,
-                })
-            }
-            IRUnionVariant::Newtype(name, type_ref) => {
-                let type_str = self.get_fqn_for_custom_type(type_ref, schema)?;
+            IRUnionVariant::Newtype(name, field_type) => {
+                let type_str = self.format_type(field_type, schema)?;
                 Ok(UnionVariantTemplate::Newtype {
                     name: name.clone(),
                     type_str,

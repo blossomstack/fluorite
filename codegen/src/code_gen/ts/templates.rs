@@ -41,26 +41,22 @@ pub struct TsEnumTemplate {
     pub doc: String,
 }
 
-/// Union variant types for template
+/// Union variant types for template (adjacently tagged format)
 #[derive(Clone)]
 pub enum TsUnionVariantTemplate {
+    /// Unit variant: `{ type: "Deleted" }`
     Unit(String),
-    Inline {
-        name: String,
-        fields: Vec<TsFieldTemplate>,
-    },
-    Newtype {
-        name: String,
-        type_str: String,
-    },
+    /// Newtype variant: `{ type: "Created", value: ... }`
+    Newtype { name: String, type_str: String },
 }
 
-/// Template for rendering a TypeScript discriminated union
+/// Template for rendering a TypeScript discriminated union (adjacently tagged)
 #[derive(Template)]
 #[template(path = "ts/union.ts.j2")]
 pub struct TsUnionTemplate {
     pub name: String,
     pub tag_field: String,
+    pub content_field: String,
     pub variants: Vec<TsUnionVariantTemplate>,
     pub imports: Vec<TsImport>,
     /// Documentation comment for this union

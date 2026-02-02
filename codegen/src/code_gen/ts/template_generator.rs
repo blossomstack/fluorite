@@ -1,6 +1,5 @@
 //! Template-based TypeScript code generator using askama templates
 
-use std::collections::HashMap;
 use std::sync::Arc;
 
 use anyhow::{anyhow, Result};
@@ -9,7 +8,7 @@ use askama::Template;
 use crate::code_gen::fs::FileSystem;
 use crate::code_gen::ir::{
     IRField, IRFieldType, IRPrimitive, IRSchema, IRStruct, IRType, IRTypeAlias, IRTypeAliasTarget,
-    IRUnion, IRUnionStyle, IRUnionVariant,
+    IRUnion, IRUnionVariant,
 };
 use crate::code_gen::utils::to_camel_case;
 use crate::code_gen::validation::{ValidationError, Validator};
@@ -39,69 +38,14 @@ impl TsTemplateGenerator {
             return Err(self.format_validation_errors(&errors));
         }
 
-        // Resolve union variant fields
-        let schema = self.resolve_union_variants(schema.clone())?;
-
         // Generate code for each package
         for (package_name, package) in &schema.packages {
             // Use override if provided, otherwise use the package name from schema
             let output_package_name = self.options.package_name.as_ref().unwrap_or(package_name);
-            self.generate_package(output_package_name, &package.types, &schema)?;
+            self.generate_package(output_package_name, &package.types, schema)?;
         }
 
         Ok(())
-    }
-
-    fn resolve_union_variants(&self, mut schema: IRSchema) -> Result<IRSchema> {
-        // Collect all structs for lookup
-        let mut structs: HashMap<String, IRStruct> = HashMap::new();
-        for package in schema.packages.values() {
-            for ir_type in &package.types {
-                if let IRType::Struct(s) = ir_type {
-                    structs.insert(s.name.clone(), s.clone());
-                }
-            }
-        }
-
-        // Resolve inline union variants
-        for package in schema.packages.values_mut() {
-            for ir_type in &mut package.types {
-                if let IRType::Union(union) = ir_type {
-                    if union.style == IRUnionStyle::Inline {
-                        let mut resolved_variants = Vec::new();
-                        for variant in &union.variants {
-                            match variant {
-                                IRUnionVariant::Inline(name, fields) => {
-                                    // Only resolve if fields are empty (need resolution from struct)
-                                    if fields.is_empty() {
-                                        if let Some(struct_def) = structs.get(name) {
-                                            resolved_variants.push(IRUnionVariant::Inline(
-                                                name.clone(),
-                                                struct_def.fields.clone(),
-                                            ));
-                                        } else {
-                                            // Treat as unit variant if struct not found
-                                            resolved_variants
-                                                .push(IRUnionVariant::Unit(name.clone()));
-                                        }
-                                    } else {
-                                        // Fields already provided, keep as-is
-                                        resolved_variants.push(variant.clone());
-                                    }
-                                }
-                                other @ IRUnionVariant::Unit(_)
-                                | other @ IRUnionVariant::Newtype(..) => {
-                                    resolved_variants.push(other.clone())
-                                }
-                            }
-                        }
-                        union.variants = resolved_variants;
-                    }
-                }
-            }
-        }
-
-        Ok(schema)
     }
 
     fn generate_package(
@@ -116,18 +60,15 @@ impl TsTemplateGenerator {
         self.fs.create_dir_all(&output_path)?;
 
         // Collect all type names in this package for import resolution
-        let package_type_names: std::collections::HashSet<String> = types
-            .iter()
-            .filter(|t| !t.is_internal())
-            .map(|t| t.name().to_string())
-            .collect();
+        let package_type_names: std::collections::HashSet<String> =
+            types.iter().map(|t| t.name().to_string()).collect();
 
         if self.options.single_file {
             // Generate all types in index.ts
             let index_path = format!("{}/index.ts", output_path);
             let mut content = String::new();
 
-            for ir_type in types.iter().filter(|t| !t.is_internal()) {
+            for ir_type in types.iter() {
                 content.push_str(&self.render_type(ir_type, schema, None)?);
             }
 
@@ -136,7 +77,7 @@ impl TsTemplateGenerator {
             // Generate each type in separate file + index.ts
             let mut modules = Vec::new();
 
-            for ir_type in types.iter().filter(|t| !t.is_internal()) {
+            for ir_type in types.iter() {
                 let file_name = to_camel_case(ir_type.name());
                 let file_path = format!("{}/{}.ts", output_path, file_name);
                 let content = self.render_type(ir_type, schema, Some(&package_type_names))?;
@@ -231,6 +172,7 @@ impl TsTemplateGenerator {
         let template = TsUnionTemplate {
             name: u.name.clone(),
             tag_field: u.tag_field.clone(),
+            content_field: u.content_field.clone(),
             variants,
             imports,
             doc: u.doc.clone().unwrap_or_default(),
@@ -300,19 +242,8 @@ impl TsTemplateGenerator {
     ) -> Result<TsUnionVariantTemplate> {
         match variant {
             IRUnionVariant::Unit(name) => Ok(TsUnionVariantTemplate::Unit(name.clone())),
-            IRUnionVariant::Inline(name, fields) => {
-                let field_templates: Vec<TsFieldTemplate> = fields
-                    .iter()
-                    .map(|f| self.convert_field(f, schema))
-                    .collect::<Result<Vec<_>>>()?;
-
-                Ok(TsUnionVariantTemplate::Inline {
-                    name: name.clone(),
-                    fields: field_templates,
-                })
-            }
-            IRUnionVariant::Newtype(name, type_ref) => {
-                let type_str = type_ref.clone();
+            IRUnionVariant::Newtype(name, field_type) => {
+                let type_str = self.format_type(field_type, schema)?;
                 Ok(TsUnionVariantTemplate::Newtype {
                     name: name.clone(),
                     type_str,
@@ -448,19 +379,12 @@ impl TsTemplateGenerator {
         for variant in &u.variants {
             match variant {
                 IRUnionVariant::Unit(_) => {}
-                IRUnionVariant::Inline(_, fields) => {
-                    for field in fields {
-                        self.collect_type_references(
-                            &field.field_type,
-                            package_type_names,
-                            &mut referenced_types,
-                        );
-                    }
-                }
-                IRUnionVariant::Newtype(_, type_name) => {
-                    if package_type_names.contains(type_name) {
-                        referenced_types.insert(type_name.clone());
-                    }
+                IRUnionVariant::Newtype(_, field_type) => {
+                    self.collect_type_references(
+                        field_type,
+                        package_type_names,
+                        &mut referenced_types,
+                    );
                 }
             }
         }

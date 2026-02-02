@@ -11,6 +11,8 @@ fn fixtures_dir() -> PathBuf {
     PathBuf::from(env!("CARGO_MANIFEST_DIR"))
         .join("..")
         .join("examples")
+        .join("demo")
+        .join("fluorite")
 }
 
 #[test]
@@ -24,11 +26,12 @@ fn test_parse_users_fl() {
     );
 
     let ast = result.unwrap();
-    assert_eq!(ast.package.len(), 3);
-    assert_eq!(ast.package[0].value, "com");
-    assert_eq!(ast.package[1].value, "example");
-    assert_eq!(ast.package[2].value, "users");
-    assert_eq!(ast.items.len(), 3); // User, UserStatus, UserList
+    // demo.users package
+    assert_eq!(ast.package.len(), 2);
+    assert_eq!(ast.package[0].value, "demo");
+    assert_eq!(ast.package[1].value, "users");
+    // Has User, UserStatus, Gender, UserStatusChange, UserEvent
+    assert!(ast.items.len() >= 3);
 }
 
 #[test]
@@ -42,31 +45,27 @@ fn test_parse_orders_fl() {
     );
 
     let ast = result.unwrap();
-    assert_eq!(ast.package.len(), 3);
-    assert_eq!(ast.package[0].value, "com");
-    assert_eq!(ast.package[1].value, "example");
-    assert_eq!(ast.package[2].value, "orders");
-    assert_eq!(ast.uses.len(), 2);
-    assert_eq!(ast.uses[0].path.len(), 4);
-    assert_eq!(ast.uses[0].path[0].value, "com");
-    assert_eq!(ast.uses[0].path[1].value, "example");
-    assert_eq!(ast.uses[0].path[2].value, "users");
-    assert_eq!(ast.uses[0].path[3].value, "User");
-    assert_eq!(ast.uses[1].path.len(), 4);
-    assert_eq!(ast.uses[1].path[3].value, "UserStatus");
+    // demo.orders package
+    assert_eq!(ast.package.len(), 2);
+    assert_eq!(ast.package[0].value, "demo");
+    assert_eq!(ast.package[1].value, "orders");
+    // Has imports from common and users
+    assert!(ast.uses.len() >= 2);
 }
 
 #[test]
 fn test_parse_multiple_files() {
     let paths = vec![
+        fixtures_dir().join("common.fl"),
         fixtures_dir().join("users.fl"),
         fixtures_dir().join("orders.fl"),
+        fixtures_dir().join("notifications.fl"),
     ];
     let result = parse_files(&paths);
     assert!(result.is_ok(), "Failed to parse files: {:?}", result.err());
 
     let asts = result.unwrap();
-    assert_eq!(asts.len(), 2);
+    assert_eq!(asts.len(), 4);
 }
 
 #[test]

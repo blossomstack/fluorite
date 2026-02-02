@@ -1,12 +1,18 @@
 use fluorite_codegen::code_gen::rust::RustOptions;
 
 fn main() {
-    // use with explicit options:
+    // Compile multiple .fl files with cross-package imports
+    // Order matters: dependencies must come before dependents
     let out_dir = std::env::var("OUT_DIR").unwrap();
     let options = RustOptions::new(out_dir).with_any_type("serde_json::Value");
-    fluorite_codegen::compile_with_options(options, &["fluorite/demo.fl"]).unwrap();
-
-    // or to use default options:
-    // let out_dir = std::env::var("OUT_DIR").unwrap();
-    // fluorite_codegen::compile(&["fluorite/demo.fl"], out_dir.as_str()).unwrap();
+    fluorite_codegen::compile_with_options(
+        options,
+        &[
+            "fluorite/common.fl",
+            "fluorite/users.fl",
+            "fluorite/orders.fl",
+            "fluorite/notifications.fl",
+        ],
+    )
+    .unwrap();
 }

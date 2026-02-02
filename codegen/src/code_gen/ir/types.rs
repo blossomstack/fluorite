@@ -36,13 +36,6 @@ impl IRType {
             IRType::TypeAlias(a) => &a.name,
         }
     }
-
-    pub fn is_internal(&self) -> bool {
-        match self {
-            IRType::Struct(s) => s.is_union_variant,
-            IRType::Enum(_) | IRType::Union(_) | IRType::TypeAlias(_) => false,
-        }
-    }
 }
 
 /// A struct type
@@ -50,7 +43,6 @@ impl IRType {
 pub struct IRStruct {
     pub name: String,
     pub fields: Vec<IRField>,
-    pub is_union_variant: bool,
     pub doc: Option<String>,
     /// Rename all fields according to case convention
     pub rename_all: Option<String>,
@@ -149,44 +141,35 @@ pub struct IREnum {
     pub doc: Option<String>,
 }
 
-/// A tagged union type
+/// A tagged union type (adjacently tagged: `{tag_field: "Variant", content_field: value}`)
 #[derive(Debug, Clone)]
 pub struct IRUnion {
     pub name: String,
+    /// Field name for the type discriminator (e.g., "type")
     pub tag_field: String,
+    /// Field name for the content (e.g., "value")
+    pub content_field: String,
     pub variants: Vec<IRUnionVariant>,
-    pub style: IRUnionStyle,
     pub doc: Option<String>,
 }
 
 /// Union variant
 #[derive(Debug, Clone)]
 pub enum IRUnionVariant {
-    /// Simple variant with no data (unit variant)
+    /// Simple variant with no data (unit variant): `{ type: "Deleted" }`
     Unit(String),
-    /// Variant with inlined struct fields
-    Inline(String, Vec<IRField>),
-    /// Variant wrapping another type
-    Newtype(String, String),
+    /// Variant with data: `{ type: "Created", value: ... }`
+    /// (name, type_ref) where type_ref is the type being wrapped
+    Newtype(String, IRFieldType),
 }
 
 impl IRUnionVariant {
     pub fn name(&self) -> &str {
         match self {
             IRUnionVariant::Unit(n) => n,
-            IRUnionVariant::Inline(n, _) => n,
             IRUnionVariant::Newtype(n, _) => n,
         }
     }
-}
-
-/// How to generate the union
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum IRUnionStyle {
-    /// Inline fields into enum variants
-    Inline,
-    /// Use newtype pattern wrapping external types
-    Extern,
 }
 
 /// Type alias (for List and Map types)

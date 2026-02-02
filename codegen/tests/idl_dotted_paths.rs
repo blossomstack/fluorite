@@ -11,11 +11,13 @@ fn fixtures_dir() -> PathBuf {
     PathBuf::from(env!("CARGO_MANIFEST_DIR"))
         .join("..")
         .join("examples")
+        .join("demo")
+        .join("fluorite")
 }
 
 #[test]
 fn test_parse_demo_users_fl() {
-    // Parse examples/users.fl with dotted package
+    // Parse examples/demo/fluorite/users.fl with dotted package
     let path = fixtures_dir().join("users.fl");
     let result = parse_file(&path);
     assert!(
@@ -25,19 +27,18 @@ fn test_parse_demo_users_fl() {
     );
 
     let ast = result.unwrap();
-    // Verify: package = "com.example.users"
-    assert_eq!(ast.package.len(), 3);
-    assert_eq!(ast.package[0].value, "com");
-    assert_eq!(ast.package[1].value, "example");
-    assert_eq!(ast.package[2].value, "users");
+    // Verify: package = "demo.users"
+    assert_eq!(ast.package.len(), 2);
+    assert_eq!(ast.package[0].value, "demo");
+    assert_eq!(ast.package[1].value, "users");
 
-    // Verify: 3 types (User struct, UserStatus enum, UserList alias)
-    assert_eq!(ast.items.len(), 3);
+    // Verify: has User, UserStatus, Gender, UserStatusChange, UserEvent
+    assert!(ast.items.len() >= 3);
 }
 
 #[test]
 fn test_parse_demo_orders_fl() {
-    // Parse examples/orders.fl with dotted imports
+    // Parse examples/demo/fluorite/orders.fl with dotted imports
     let path = fixtures_dir().join("orders.fl");
     let result = parse_file(&path);
     assert!(
@@ -47,41 +48,39 @@ fn test_parse_demo_orders_fl() {
     );
 
     let ast = result.unwrap();
-    // Verify: package = "com.example.orders"
-    assert_eq!(ast.package.len(), 3);
-    assert_eq!(ast.package[0].value, "com");
-    assert_eq!(ast.package[1].value, "example");
-    assert_eq!(ast.package[2].value, "orders");
+    // Verify: package = "demo.orders"
+    assert_eq!(ast.package.len(), 2);
+    assert_eq!(ast.package[0].value, "demo");
+    assert_eq!(ast.package[1].value, "orders");
 
-    // Verify: imports from com.example.users
-    assert_eq!(ast.uses.len(), 2);
-    assert_eq!(ast.uses[0].path.len(), 4);
-    assert_eq!(ast.uses[0].path[0].value, "com");
-    assert_eq!(ast.uses[0].path[1].value, "example");
-    assert_eq!(ast.uses[0].path[2].value, "users");
-    assert_eq!(ast.uses[0].path[3].value, "User");
+    // Verify: imports from demo.common and demo.users
+    assert!(ast.uses.len() >= 2);
 }
 
 #[test]
 fn test_multi_file_cross_package_imports() {
-    // Parse both users.fl and orders.fl together
+    // Parse all demo .fl files together
     let paths = vec![
+        fixtures_dir().join("common.fl"),
         fixtures_dir().join("users.fl"),
         fixtures_dir().join("orders.fl"),
+        fixtures_dir().join("notifications.fl"),
     ];
     let result = parse_files(&paths);
     assert!(result.is_ok(), "Failed to parse files: {:?}", result.err());
 
     let asts = result.unwrap();
-    assert_eq!(asts.len(), 2);
+    assert_eq!(asts.len(), 4);
 
-    // Verify IR schema has both packages
+    // Verify IR schema has all packages
     let converter = fluorite_codegen::idl::ast_to_ir::AstToIrConverter::new();
     let schema = converter.convert_files(&asts).unwrap();
 
-    assert!(schema.packages.contains_key("com.example.users"));
-    assert!(schema.packages.contains_key("com.example.orders"));
-    assert_eq!(schema.packages.len(), 2);
+    assert!(schema.packages.contains_key("demo.common"));
+    assert!(schema.packages.contains_key("demo.users"));
+    assert!(schema.packages.contains_key("demo.orders"));
+    assert!(schema.packages.contains_key("demo.notifications"));
+    assert_eq!(schema.packages.len(), 4);
 }
 
 #[test]

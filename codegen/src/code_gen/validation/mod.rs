@@ -207,24 +207,15 @@ impl Validator {
         for variant in &u.variants {
             match variant {
                 IRUnionVariant::Unit(_) => {}
-                IRUnionVariant::Inline(name, fields) => {
-                    // Only check if type exists if fields are empty (needs resolution)
-                    // If fields are present, they're embedded and type doesn't need to exist
-                    if fields.is_empty() && !known_types.contains(name) {
-                        errors.push(ValidationError::UnknownType {
-                            type_name: name.clone(),
-                            referenced_from: u.name.clone(),
-                            field_name: None,
-                        });
-                    }
-                }
-                IRUnionVariant::Newtype(_, type_ref) => {
-                    if !known_types.contains(type_ref) {
-                        errors.push(ValidationError::UnknownType {
-                            type_name: type_ref.clone(),
-                            referenced_from: u.name.clone(),
-                            field_name: None,
-                        });
+                IRUnionVariant::Newtype(_, field_type) => {
+                    if let Some(type_name) = self.get_custom_type_name(field_type) {
+                        if !known_types.contains(&type_name) {
+                            errors.push(ValidationError::UnknownType {
+                                type_name,
+                                referenced_from: u.name.clone(),
+                                field_name: None,
+                            });
+                        }
                     }
                 }
             }
@@ -336,11 +327,10 @@ impl Validator {
             IRType::Union(u) => {
                 for variant in &u.variants {
                     match variant {
-                        IRUnionVariant::Newtype(_, type_ref) => {
-                            deps.push(type_ref.clone());
-                        }
-                        IRUnionVariant::Inline(name, _) => {
-                            deps.push(name.clone());
+                        IRUnionVariant::Newtype(_, field_type) => {
+                            if let Some(name) = self.get_custom_type_name(field_type) {
+                                deps.push(name);
+                            }
                         }
                         IRUnionVariant::Unit(_) => {}
                     }

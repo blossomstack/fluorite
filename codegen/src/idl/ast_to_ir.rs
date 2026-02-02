@@ -5,7 +5,7 @@ use std::collections::HashMap;
 
 use crate::code_gen::ir::{
     IREnum, IRField, IRFieldType, IRPackage, IRPrimitive, IRSchema, IRStruct, IRType, IRTypeAlias,
-    IRTypeAliasTarget, IRUnion, IRUnionStyle, IRUnionVariant,
+    IRTypeAliasTarget, IRUnion, IRUnionVariant,
 };
 
 use super::ast::{
@@ -17,22 +17,19 @@ use super::ast::{
 pub struct AstToIrConverter {
     /// All type names across all files (for resolving references)
     all_type_names: std::collections::HashSet<String>,
-    /// Types that are used as inline union variants
-    union_variant_names: std::collections::HashSet<String>,
 }
 
 impl AstToIrConverter {
     pub fn new() -> Self {
         Self {
             all_type_names: std::collections::HashSet::new(),
-            union_variant_names: std::collections::HashSet::new(),
         }
     }
 
     /// Convert multiple AST files to a single IR schema
     pub fn convert_files(mut self, files: &[AstFile]) -> Result<IRSchema> {
-        // First pass: collect all type names and identify union variants
-        self.collect_type_info(files);
+        // First pass: collect all type names
+        self.collect_type_names(files);
 
         // Second pass: build IR types
         let mut packages: HashMap<String, IRPackage> = HashMap::new();
@@ -61,8 +58,7 @@ impl AstToIrConverter {
         Ok(IRSchema { packages })
     }
 
-    fn collect_type_info(&mut self, files: &[AstFile]) {
-        // First pass: collect all type names
+    fn collect_type_names(&mut self, files: &[AstFile]) {
         for file in files {
             for item in &file.items {
                 let type_name = match item {
@@ -72,25 +68,6 @@ impl AstToIrConverter {
                     AstItem::TypeAlias(t) => t.name.value.clone(),
                 };
                 self.all_type_names.insert(type_name);
-            }
-        }
-
-        // Second pass: identify inline union variants
-        for file in files {
-            for item in &file.items {
-                if let AstItem::Union(union) = item {
-                    // Only mark types as union variants for inline unions
-                    let is_inline = !self.has_attr(&union.attrs, "extern");
-                    if is_inline {
-                        for variant in &union.variants {
-                            if let Some(inner_type) = &variant.inner_type {
-                                if self.all_type_names.contains(&inner_type.value) {
-                                    self.union_variant_names.insert(inner_type.value.clone());
-                                }
-                            }
-                        }
-                    }
-                }
             }
         }
     }
@@ -105,7 +82,6 @@ impl AstToIrConverter {
     }
 
     fn convert_struct(&self, ast_struct: &AstStruct) -> Result<IRType> {
-        let is_union_variant = self.union_variant_names.contains(&ast_struct.name.value);
         let fields = ast_struct
             .fields
             .iter()
@@ -119,7 +95,6 @@ impl AstToIrConverter {
         Ok(IRType::Struct(IRStruct {
             name: ast_struct.name.value.clone(),
             fields,
-            is_union_variant,
             doc: ast_struct.doc.clone(),
             rename_all,
             deny_unknown_fields,
@@ -141,50 +116,43 @@ impl AstToIrConverter {
     }
 
     fn convert_union(&self, ast_union: &AstUnion) -> Result<IRType> {
-        // Determine union style from attributes
-        let style = if self.has_attr(&ast_union.attrs, "extern") {
-            IRUnionStyle::Extern
-        } else {
-            IRUnionStyle::Inline
-        };
-
         // Get tag field name from attributes or default to "type"
         let tag_field = self
             .get_attr_value(&ast_union.attrs, "type_tag")
             .unwrap_or_else(|| "type".to_string());
 
-        let variants = ast_union
+        // Get content field name from attributes or default to "value"
+        let content_field = self
+            .get_attr_value(&ast_union.attrs, "content_tag")
+            .unwrap_or_else(|| "value".to_string());
+
+        let variants: Result<Vec<_>> = ast_union
             .variants
             .iter()
-            .map(|v| self.convert_union_variant(v, style))
+            .map(|v| self.convert_union_variant(v))
             .collect();
 
         Ok(IRType::Union(IRUnion {
             name: ast_union.name.value.clone(),
             tag_field,
-            variants,
-            style,
+            content_field,
+            variants: variants?,
             doc: ast_union.doc.clone(),
         }))
     }
 
-    fn convert_union_variant(
-        &self,
-        variant: &AstUnionVariant,
-        _style: IRUnionStyle,
-    ) -> IRUnionVariant {
+    fn convert_union_variant(&self, variant: &AstUnionVariant) -> Result<IRUnionVariant> {
         match &variant.inner_type {
             Some(inner_type) => {
-                if self.all_type_names.contains(&inner_type.value) {
-                    // This is a newtype variant like Created(Order)
-                    // Always use Newtype, regardless of union style
-                    IRUnionVariant::Newtype(variant.name.value.clone(), inner_type.value.clone())
-                } else {
-                    // Simple unit variant
-                    IRUnionVariant::Unit(variant.name.value.clone())
-                }
+                // Convert the inner type to IRFieldType
+                let ast_type = AstType::Named(inner_type.clone());
+                let field_type = self.convert_ast_type(&ast_type);
+                Ok(IRUnionVariant::Newtype(
+                    variant.name.value.clone(),
+                    field_type,
+                ))
             }
-            None => IRUnionVariant::Unit(variant.name.value.clone()),
+            None => Ok(IRUnionVariant::Unit(variant.name.value.clone())),
         }
     }
 
@@ -392,6 +360,7 @@ mod tests {
             union Event {
                 UserCreated(User),
                 OrderPlaced(Order),
+                Deleted,
             }
         "#;
         let ast = parse_file(source).unwrap();
@@ -402,7 +371,64 @@ mod tests {
         match &package.types[2] {
             IRType::Union(u) => {
                 assert_eq!(u.name, "Event");
-                assert_eq!(u.variants.len(), 2);
+                assert_eq!(u.tag_field, "type");
+                assert_eq!(u.content_field, "value");
+                assert_eq!(u.variants.len(), 3);
+
+                // Check variant types
+                match &u.variants[0] {
+                    IRUnionVariant::Newtype(name, _) => assert_eq!(name, "UserCreated"),
+                    _ => panic!("Expected Newtype variant"),
+                }
+                match &u.variants[2] {
+                    IRUnionVariant::Unit(name) => assert_eq!(name, "Deleted"),
+                    _ => panic!("Expected Unit variant"),
+                }
+            }
+            _ => panic!("Expected union"),
+        }
+    }
+
+    #[test]
+    fn test_convert_union_with_primitives() {
+        let source = r#"
+            package test;
+            union Message {
+                Text(String),
+                Count(i32),
+                Empty,
+            }
+        "#;
+        let ast = parse_file(source).unwrap();
+        let converter = AstToIrConverter::new();
+        let schema = converter.convert_files(&[ast]).unwrap();
+
+        let package = schema.packages.get("test").unwrap();
+        match &package.types[0] {
+            IRType::Union(u) => {
+                assert_eq!(u.name, "Message");
+                assert_eq!(u.variants.len(), 3);
+
+                match &u.variants[0] {
+                    IRUnionVariant::Newtype(name, field_type) => {
+                        assert_eq!(name, "Text");
+                        assert!(matches!(
+                            field_type,
+                            IRFieldType::Primitive(IRPrimitive::String)
+                        ));
+                    }
+                    _ => panic!("Expected Newtype variant"),
+                }
+                match &u.variants[1] {
+                    IRUnionVariant::Newtype(name, field_type) => {
+                        assert_eq!(name, "Count");
+                        assert!(matches!(
+                            field_type,
+                            IRFieldType::Primitive(IRPrimitive::Int32)
+                        ));
+                    }
+                    _ => panic!("Expected Newtype variant"),
+                }
             }
             _ => panic!("Expected union"),
         }

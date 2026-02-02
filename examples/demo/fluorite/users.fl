@@ -1,0 +1,70 @@
+/// User management types
+package demo.users;
+
+use demo.common.Address;
+
+/// A user in the system
+#[rename_all = "camelCase"]
+struct User {
+    /// Unique identifier for the user
+    id: String,
+    /// User's first name
+    first_name: String,
+    /// User's last name
+    last_name: String,
+    /// User's email address
+    email: String,
+    /// Optional age of the user
+    age: Option<u32>,
+    /// User's account status
+    status: UserStatus,
+    /// User's gender
+    gender: Gender,
+    /// Whether the account is active
+    active: bool,
+    /// User's home address (imported from common)
+    home_address: Option<Address>,
+    /// When the user was created
+    created_at: String,
+    /// Additional metadata (dynamic JSON)
+    info: Option<Any>,
+}
+
+/// Possible statuses for a user account
+enum UserStatus {
+    Active,
+    Inactive,
+    Suspended,
+    Pending,
+}
+
+/// User's gender
+enum Gender {
+    Male,
+    Female,
+    Other,
+}
+
+/// Event types for user lifecycle
+#[type_tag = "type"]
+union UserEvent {
+    Created(User),
+    Updated(User),
+    Deleted,
+    StatusChanged(UserStatusChange),
+}
+
+/// Status change details
+#[rename_all = "camelCase"]
+struct UserStatusChange {
+    user_id: String,
+    old_status: UserStatus,
+    new_status: UserStatus,
+    changed_at: String,
+}
+
+/// List of users
+type UserList = Vec<User>;
+
+/// List of user events
+type UserEventStream = Vec<UserEvent>;
