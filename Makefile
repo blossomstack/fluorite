@@ -72,6 +72,8 @@ bump-version:
 	NEW_VERSION="$$MAJOR.$$NEW_MINOR.0"; \
 	echo "Bumping version from $$CURRENT to $$NEW_VERSION"; \
 	sed -i.bak "s/^version = \"$$CURRENT\"/version = \"$$NEW_VERSION\"/" Cargo.toml && rm Cargo.toml.bak; \
+	echo "Updating codegen dependency version to $$NEW_VERSION"; \
+	sed -i.bak "s/version = \"[^\"]*\"/version = \"$$NEW_VERSION\"/g" codegen/Cargo.toml && rm codegen/Cargo.toml.bak; \
 	$(MAKE) sync-versions
 
 # Release: bump version, commit, tag, and push

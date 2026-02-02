@@ -234,7 +234,7 @@ checksum = "b05b61dc5112cbb17e4b6cd61790d9845d13888356391624cbe7e41efeac1e75"
 
 [[package]]
 name = "demo"
-version = "0.1.9"
+version = "0.2.0"
 dependencies = [
  "clap",
  "derive-new",
@@ -263,7 +263,7 @@ checksum = "5baebc0774151f905a1a2cc41989300b1e6fbb29aff0ceffa1064fdd3088d582"
 
 [[package]]
 name = "fluorite"
-version = "0.1.9"
+version = "0.2.0"
 dependencies = [
  "anyhow",
  "serde",
@@ -272,7 +272,7 @@ dependencies = [
 
 [[package]]
 name = "fluorite_codegen"
-version = "0.1.9"
+version = "0.2.0"
 dependencies = [
  "anyhow",
  "ariadne",
