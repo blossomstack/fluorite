@@ -1,6 +1,6 @@
 {
   "name": "@zhxiaogg/fluorite-darwin-x64",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "description": "Fluorite CLI binary for macOS x64",
   "os": [
     "darwin"
