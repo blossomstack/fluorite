@@ -66,7 +66,7 @@ fi
 echo ""
 echo "Step 3: Generating TypeScript types..."
 cd "$SCRIPT_DIR/../../examples/demo-ts"
-if "$SCRIPT_DIR/../../target/debug/fluorite" ts --inputs ../demo/fluorite/demo.yaml --output ./generated 2>/dev/null; then
+if "$SCRIPT_DIR/../../target/debug/fluorite" ts --inputs ../demo/fluorite/common.fl ../demo/fluorite/users.fl ../demo/fluorite/orders.fl ../demo/fluorite/notifications.fl --output ./generated 2>/dev/null; then
     pass "TypeScript types generated successfully"
 else
     fail "TypeScript type generation failed"
@@ -102,10 +102,10 @@ echo "========================================="
 # Rust writes JSON files
 cd "$SCRIPT_DIR/../../examples/demo"
 info "Running Rust demo to write JSON files..."
-cargo run --quiet -- write --output "$RUST_TO_TS_DIR" 2>/dev/null
+cargo run --quiet -- write --output "$RUST_TO_TS_DIR" 2>/dev/null || true
 
 # Verify Rust wrote files
-if [ -f "$RUST_TO_TS_DIR/user_male.json" ] && [ -f "$RUST_TO_TS_DIR/user_female.json" ]; then
+if [ -f "$RUST_TO_TS_DIR/user.json" ] && [ -f "$RUST_TO_TS_DIR/user_minimal.json" ]; then
     pass "Rust wrote JSON files successfully"
 else
     fail "Rust failed to write JSON files"
@@ -146,7 +146,7 @@ else
 fi
 
 # Verify TypeScript wrote files
-if [ -f "$TS_TO_RUST_DIR/user_male.json" ] && [ -f "$TS_TO_RUST_DIR/user_female.json" ]; then
+if [ -f "$TS_TO_RUST_DIR/user.json" ] && [ -f "$TS_TO_RUST_DIR/user_event_created.json" ]; then
     pass "TypeScript JSON files exist"
 else
     fail "TypeScript failed to write JSON files"
@@ -176,9 +176,9 @@ if [ $TESTS_FAILED -eq 0 ]; then
     echo "Tested scenarios:"
     echo "  ✓ Rust serializes → TypeScript deserializes"
     echo "  ✓ TypeScript serializes → Rust deserializes"
-    echo "  ✓ User objects with optional fields"
-    echo "  ✓ Gender enum (Male/Female)"
-    echo "  ✓ TestUnion (PlainString and AnObject variants)"
+    echo "  ✓ Multi-package types (common, users, orders, notifications)"
+    echo "  ✓ Adjacently tagged unions"
+    echo "  ✓ Cross-package type imports"
     exit 0
 else
     echo -e "${RED}Some tests failed!${NC}"

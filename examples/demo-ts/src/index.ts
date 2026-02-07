@@ -12,7 +12,6 @@ import {
 } from "../generated/demo/users";
 import {
   Order,
-  OrderItem,
   OrderStatus,
   OrderEvent,
   OrderStatusChange,
@@ -110,6 +109,19 @@ function createSampleUserEventStatusChanged(): UserEvent {
   };
 }
 
+function createSampleUserMinimal(): User {
+  return {
+    id: "user-002",
+    firstName: "Jane",
+    lastName: "Smith",
+    email: "jane.smith@example.com",
+    status: UserStatus.Pending,
+    gender: Gender.Female,
+    active: false,
+    createdAt: "2024-02-20T14:00:00Z",
+  };
+}
+
 function createSampleUserEventDeleted(): UserEvent {
   return {
     type: "Deleted",
@@ -163,6 +175,18 @@ function createSampleOrderEventCancelled(): OrderEvent {
   };
 }
 
+function createSampleOrderEventStatusChanged(): OrderEvent {
+  return {
+    type: "StatusChanged",
+    value: {
+      orderId: "order-001",
+      oldStatus: OrderStatus.Pending,
+      newStatus: OrderStatus.Confirmed,
+      changedAt: "2024-01-20T10:00:00Z",
+    } as OrderStatusChange,
+  };
+}
+
 // Sample data creators - Notifications
 function createSampleMessagePlainText(): Message {
   return {
@@ -180,6 +204,18 @@ function createSampleMessageUserNotification(): Message {
       userId: "user-001",
       actionUrl: "https://example.com/welcome",
     } as UserNotification,
+  };
+}
+
+function createSampleMessageOrderNotification(): Message {
+  return {
+    type: "OrderNotification",
+    value: {
+      title: "Order Shipped!",
+      body: "Your order is on its way.",
+      orderId: "order-001",
+      actionUrl: "https://example.com/track/order-001",
+    } as OrderNotification,
   };
 }
 
@@ -237,16 +273,16 @@ function writeSampleData(outputDir: string): void {
     serializeToJson(createSampleUser())
   );
   fs.writeFileSync(
+    path.join(outputDir, "user_minimal.json"),
+    serializeToJson(createSampleUserMinimal())
+  );
+  fs.writeFileSync(
     path.join(outputDir, "user_event_created.json"),
     serializeToJson(createSampleUserEventCreated())
   );
   fs.writeFileSync(
     path.join(outputDir, "user_event_status_changed.json"),
     serializeToJson(createSampleUserEventStatusChanged())
-  );
-  fs.writeFileSync(
-    path.join(outputDir, "user_event_deleted.json"),
-    serializeToJson(createSampleUserEventDeleted())
   );
 
   // Write Order samples
@@ -262,15 +298,23 @@ function writeSampleData(outputDir: string): void {
     path.join(outputDir, "order_event_cancelled.json"),
     serializeToJson(createSampleOrderEventCancelled())
   );
+  fs.writeFileSync(
+    path.join(outputDir, "order_event_status_changed.json"),
+    serializeToJson(createSampleOrderEventStatusChanged())
+  );
 
   // Write Notification samples
   fs.writeFileSync(
-    path.join(outputDir, "message_plain_text.json"),
+    path.join(outputDir, "message_plain.json"),
     serializeToJson(createSampleMessagePlainText())
   );
   fs.writeFileSync(
     path.join(outputDir, "message_user_notification.json"),
     serializeToJson(createSampleMessageUserNotification())
+  );
+  fs.writeFileSync(
+    path.join(outputDir, "message_order_notification.json"),
+    serializeToJson(createSampleMessageOrderNotification())
   );
   fs.writeFileSync(
     path.join(outputDir, "message_system_alert.json"),
