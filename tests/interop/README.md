@@ -6,17 +6,19 @@ This directory contains end-to-end interoperability tests that verify serializat
 
 The interoperability test ensures that:
 
-1. **Rust → TypeScript**: Rust can serialize data to JSON that TypeScript can correctly deserialize
-2. **TypeScript → Rust**: TypeScript can serialize data to JSON that Rust can correctly deserialize
+1. **Rust -> TypeScript**: Rust can serialize data to JSON that TypeScript can correctly deserialize
+2. **TypeScript -> Rust**: TypeScript can serialize data to JSON that Rust can correctly deserialize
 3. **Round-trip integrity**: Data survives round-trip serialization between languages
 
 ## Test Scenarios
 
-The tests cover the following schema types from `examples/demo/fluorite/demo.yaml`:
+The tests cover the following schema types from `examples/demo/fluorite/`:
 
 - **User object**: Complex struct with various field types including optional `Any` field
-- **Gender enum**: Simple enum with Male/Female variants
-- **TestUnion**: Tagged union with PlainString and AnObject variants
+- **Enums**: `UserStatus`, `Gender`, `OrderStatus`, `AlertSeverity`, etc.
+- **Tagged unions**: `UserEvent`, `OrderEvent`, `Message` with adjacently tagged format
+- **Cross-package imports**: Types referencing types from other packages
+- **Primitive union variants**: `Message::PlainText(String)`
 
 ## Running the Tests
 
@@ -37,14 +39,14 @@ make interop-test
 1. **Build Phase**:
    - Build Rust demo binary
    - Build Fluorite CLI
-   - Generate TypeScript types from schema
+   - Generate TypeScript types from `.fl` schemas
    - Compile TypeScript to JavaScript
 
-2. **Rust → TypeScript Test**:
+2. **Rust -> TypeScript Test**:
    - Rust demo writes sample JSON files
    - TypeScript demo reads and validates the JSON files
 
-3. **TypeScript → Rust Test**:
+3. **TypeScript -> Rust Test**:
    - TypeScript demo writes sample JSON files
    - Rust demo reads and validates the JSON files
 
@@ -61,7 +63,7 @@ These files are gitignored as they are generated during test execution.
 
 To add new interoperability test cases:
 
-1. Update the schema in `examples/demo/fluorite/demo.yaml`
+1. Update or add schemas in `examples/demo/fluorite/`
 2. Add sample data creators in both:
    - `examples/demo/src/main.rs`
    - `examples/demo-ts/src/index.ts`

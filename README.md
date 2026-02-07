@@ -4,134 +4,232 @@
 [![docs.rs](https://img.shields.io/docsrs/fluorite)](https://docs.rs/fluorite/latest)
 [![CI](https://github.com/blossomstack/fluorite/actions/workflows/ci.yml/badge.svg)](https://github.com/blossomstack/fluorite/actions/workflows/ci.yml)
 
-Fluorite is a code generation tool that generates Rust and TypeScript code from .fl (Fluorite IDL) schema definitions. It's an IDL/schema-based code generator focused on serialization/deserialization patterns.
+Fluorite generates **Rust** and **TypeScript** code from a shared schema language. Define your types once in `.fl` files, then generate type-safe, serialization-ready code for both languages.
 
-## Features
+## Quick Start
 
-- **Dual Language Support**: Generate both Rust and TypeScript code from the same schema
-- **Fluorite IDL**: Native Rust-like syntax for schema definitions (.fl files)
-- **Rich Type System**: Objects, enums, tagged unions, lists, maps, and primitives
-- **Serde Integration**: Built-in support for serialization/deserialization
-- **Cargo Integration**: Use via `build.rs` for seamless Rust project integration
-- **CLI Tool**: Command-line interface for code generation
+### 1. Install
 
-## Schema Definition
+```bash
+# via Cargo
+cargo install fluorite_codegen
 
-Fluorite uses `.fl` files with Rust-like syntax:
+# or via npm
+npm install -D @zhxiaogg/fluorite-cli
+```
+
+### 2. Write a Schema
+
+Create `schema.fl`:
 
 ```rust
-/// Package declaration
-package users;
+package myapp;
 
-/// Import from other .fl files
-use orders::Order;
+struct User {
+    id: String,
+    name: String,
+    email: Option<String>,
+    active: bool,
+}
 
-/// Struct definition
+enum Role {
+    Admin,
+    Member,
+    Guest,
+}
+```
+
+### 3. Generate Code
+
+```bash
+# Rust
+fluorite rust --inputs schema.fl --output ./src/generated
+
+# TypeScript
+fluorite ts --inputs schema.fl --output ./src/generated
+```
+
+That's it. You now have type-safe structs (Rust) and interfaces (TypeScript) with full serialization support.
+
+---
+
+## The Fluorite IDL
+
+Fluorite uses `.fl` files with a Rust-like syntax. Here's what you can express:
+
+### Structs
+
+```rust
+/// A customer order
+#[rename_all = "camelCase"]
+struct Order {
+    order_id: String,
+    total: f64,
+    shipped: bool,
+    notes: Option<String>,
+}
+```
+
+**Rust output** &mdash; a `#[derive(Serialize, Deserialize)]` struct with `#[serde(rename_all = "camelCase")]`.
+
+**TypeScript output** &mdash; an exported interface with camelCase field names.
+
+### Enums
+
+```rust
+enum OrderStatus {
+    Pending,
+    Confirmed,
+    Shipped,
+    Delivered,
+    Cancelled,
+}
+```
+
+**Rust** &mdash; a standard `enum` with serde derives. **TypeScript** &mdash; a string literal union type.
+
+### Tagged Unions
+
+Fluorite uses **adjacently tagged** unions, producing consistent JSON across both languages:
+
+```rust
+#[type_tag = "type"]
+#[content_tag = "value"]
+union OrderEvent {
+    Created(Order),
+    StatusChanged(StatusChange),
+    Cancelled,
+}
+```
+
+This serializes as:
+```json
+{"type": "Created", "value": {"orderId": "...", "total": 42.0, ...}}
+{"type": "Cancelled"}
+```
+
+**Rust output:**
+```rust
+#[serde(tag = "type", content = "value")]
+pub enum OrderEvent {
+    Created(Order),
+    StatusChanged(StatusChange),
+    Cancelled,
+}
+```
+
+**TypeScript output:**
+```typescript
+export type OrderEvent =
+  | { type: "Created"; value: Order }
+  | { type: "StatusChanged"; value: StatusChange }
+  | { type: "Cancelled" };
+```
+
+### Type Aliases
+
+```rust
+type OrderList = Vec<Order>;
+type OrderMap = Map<String, Order>;
+```
+
+### Packages and Imports
+
+Split schemas across files with dotted package names:
+
+```rust
+// common.fl
+package myapp.common;
+
+struct Address {
+    street: String,
+    city: String,
+    country: String,
+}
+```
+
+```rust
+// users.fl
+package myapp.users;
+
+use myapp.common.Address;
+
+struct User {
+    name: String,
+    home_address: Address,
+}
+```
+
+### Doc Comments
+
+Lines starting with `///` become doc comments in Rust and JSDoc comments in TypeScript:
+
+```rust
+/// A user in the system.
+/// Created during registration.
 struct User {
     /// Unique identifier
-    id: Uuid,
-    /// User's name
-    name: String,
-    /// Optional email
-    email: Option<String>,
-    /// Account status
-    status: UserStatus,
+    id: String,
 }
-
-/// Enum definition
-enum UserStatus {
-    Active,
-    Inactive,
-}
-
-/// Tagged union for polymorphic types (adjacently tagged: {type: "...", value: ...})
-#[type_tag = "type"]
-union UserEvent {
-    Created(User),
-    Updated(User),
-    Deleted,                 // Unit variant: {type: "Deleted"}
-    StatusChanged(StatusChange),
-}
-
-/// Type alias
-type UserList = Vec<User>;
 ```
 
-See the [demo project](examples/demo/fluorite/) for complete multi-file examples with cross-package imports.
+### Attributes
 
-## Using `fluorite` as a CLI
+| Attribute | Applies to | Effect |
+|-----------|-----------|--------|
+| `#[rename = "name"]` | fields, variants | Rename in JSON |
+| `#[rename_all = "camelCase"]` | structs, enums | Rename all fields/variants |
+| `#[alias = "alt"]` | fields | Accept alternate name during deserialization |
+| `#[default]` | fields | Use `Default::default()` if missing |
+| `#[skip_if_none]` | fields | Omit if `None` |
+| `#[skip_if_default]` | fields | Omit if default value |
+| `#[flatten]` | fields | Flatten nested struct into parent |
+| `#[deprecated]` | types, fields | Mark as deprecated |
+| `#[type_tag = "..."]` | unions | Tag field name (default: `"type"`) |
+| `#[content_tag = "..."]` | unions | Content field name (default: `"value"`) |
 
-### Installation
+### Type Reference
 
-```bash
-cargo install fluorite_codegen
-```
+| Fluorite Type | Rust | TypeScript |
+|---------------|------|------------|
+| `String` | `String` | `string` |
+| `bool` | `bool` | `boolean` |
+| `i32`, `i64` | `i32`, `i64` | `number` |
+| `u32`, `u64` | `u32`, `u64` | `number` |
+| `f32`, `f64` | `f32`, `f64` | `number` |
+| `Uuid` | `uuid::Uuid` | `string` |
+| `Decimal` | `rust_decimal::Decimal` | `string` |
+| `Bytes` | `Vec<u8>` | `string` |
+| `Url` | `url::Url` | `string` |
+| `DateTime`, `DateTimeUtc`, `DateTimeTz` | `chrono` types | `string` |
+| `Date`, `Time`, `Duration` | `chrono` types | `string` |
+| `Timestamp`, `TimestampMillis` | `i64` | `number` |
+| `Any` | `fluorite::Any` | `unknown` |
+| `Option<T>` | `Option<T>` | `T \| undefined` (optional field) |
+| `Vec<T>` | `Vec<T>` | `T[]` |
+| `Map<K, V>` | `HashMap<K, V>` | `Record<K, V>` |
 
-### Generate Rust Code
+---
 
-```bash
-# Generate Rust from .fl files
-fluorite rust --inputs examples/users.fl examples/orders.fl --output ./src/generated
+## Using Fluorite in a Rust Project
 
-# Single file output
-fluorite rust --inputs examples/users.fl --output ./src/generated --single-file
+For Rust projects, the recommended approach is `build.rs` integration so types are generated at compile time.
 
-# With cargo
- cargo run --package fluorite_codegen --bin fluorite -- rust \
-  --inputs examples/users.fl examples/orders.fl \
-  --output ./src/generated
-```
-
-### Generate TypeScript Code
-
-```bash
-# Generate TypeScript from .fl files
-fluorite ts --inputs examples/users.fl examples/orders.fl --output ./src/generated
-
-# Single file output
-fluorite ts --inputs examples/users.fl --output ./src/generated --single-file
-
-# With cargo
-cargo run --package fluorite_codegen --bin fluorite -- ts \
-  --inputs examples/users.fl \
-  --output ./src/generated
-```
-
-### CLI Help
-
-```bash
-$ fluorite --help
-Generate Rust and TypeScript code from Fluorite IDL schemas.
-
-Usage: fluorite <COMMAND>
-
-Commands:
-  rust  Generate Rust code
-  ts    Generate TypeScript code
-  help  Print this message or the help of the given subcommand(s)
-
-Options:
-  -h, --help     Print help
-  -V, --version  Print version
-```
-
-## Using `fluorite` in a Cargo Project
-
-> See the [demo project](examples/demo) for a complete working example.
+> See the [examples/demo](examples/demo) project for a complete working example.
 
 ### 1. Add Dependencies
 
 ```toml
 [dependencies]
 serde = { version = "1.0", features = ["serde_derive"] }
-fluorite = "0.1"
+fluorite = "0.2"
 derive-new = "0.7"
 
 [build-dependencies]
-fluorite_codegen = "0.1"
+fluorite_codegen = "0.2"
 ```
 
-### 2. Create a `build.rs` File
+### 2. Create `build.rs`
 
 ```rust
 use fluorite_codegen::code_gen::rust::RustOptions;
@@ -141,38 +239,55 @@ fn main() {
     let options = RustOptions::new(&out_dir)
         .with_any_type("serde_json::Value")
         .with_single_file(true);
-    fluorite_codegen::compile_with_options(options, &["schemas/demo.fl"]).unwrap();
+    fluorite_codegen::compile_with_options(options, &["schemas/myapp.fl"]).unwrap();
 }
 ```
 
 ### 3. Include Generated Code
 
-In your `lib.rs` or `main.rs`:
-
 ```rust
-mod demo {
-    include!(concat!(env!("OUT_DIR"), "/demo/mod.rs"));
+mod myapp {
+    include!(concat!(env!("OUT_DIR"), "/myapp/mod.rs"));
 }
 
-// Use the generated types
-use demo::User;
+use myapp::User;
 ```
 
-### Rust Configuration Options
+### Rust Options
 
 ```rust
 RustOptions::new(output_dir)
-    .with_single_file(true)              // All types in mod.rs
-    .with_any_type("serde_json::Value")  // Custom Any type
-    .with_derives(vec!["Debug", "Clone"]) // Custom derives
-    .with_additional_derives(vec!["PartialEq"]) // Extra derives
-    .with_generate_new(true)             // Generate derive_new::new
-    .with_visibility(Visibility::Public) // Visibility level
+    .with_single_file(true)              // All types in one mod.rs (default: true)
+    .with_any_type("serde_json::Value")  // Map `Any` to this type
+    .with_derives(vec!["Debug", "Clone"]) // Replace default derives
+    .with_additional_derives(vec!["Hash"]) // Add extra derives
+    .with_generate_new(true)             // Add derive_new::new (default: true)
+    .with_visibility(Visibility::Public) // Type visibility (default: public)
 ```
 
-## TypeScript Code Generation
+---
 
-### Using Programmatically
+## Using Fluorite in a TypeScript Project
+
+### Via npm
+
+```bash
+npm install -D @zhxiaogg/fluorite-cli
+```
+
+Add to `package.json`:
+```json
+{
+  "scripts": {
+    "generate": "fluorite ts --inputs ./schemas/*.fl --output ./src/generated",
+    "build": "npm run generate && tsc"
+  }
+}
+```
+
+> See the [examples/demo-ts](examples/demo-ts) project for a complete working example.
+
+### Via Rust API
 
 ```rust
 use fluorite_codegen::code_gen::ts::TypeScriptOptions;
@@ -184,150 +299,96 @@ let options = TypeScriptOptions::new("./src/generated")
 fluorite_codegen::compile_ts_with_options(options, &["schemas/users.fl"]).unwrap();
 ```
 
-### TypeScript Configuration Options
+### TypeScript Options
 
 ```rust
 TypeScriptOptions::new(output_dir)
-    .with_single_file(true)        // All types in index.ts
-    .with_any_type("any")          // Custom Any type mapping
-    .with_readonly(true)           // Generate readonly properties
-    .with_package_name("custom")   // Override output package directory
+    .with_single_file(true)        // All types in index.ts (default: false)
+    .with_any_type("any")          // Map `Any` to this type (default: "unknown")
+    .with_readonly(true)           // Generate readonly properties (default: false)
+    .with_package_name("custom")   // Override output directory name
 ```
 
-### Type Mapping (Fluorite → TypeScript)
+---
 
-| Fluorite Type | TypeScript |
-|---------------|------------|
-| String, DateTime, DateTimeUtc, DateTimeTz, Date, Time, Duration | `string` |
-| Bool | `boolean` |
-| Int32, Int64, UInt32, UInt64, Float32, Float64, Timestamp, TimestampMillis | `number` |
-| UUID, Decimal, Bytes, Url | `string` |
-| Any | `unknown` |
-| List<T> | `T[]` |
-| Map<K, V> | `Record<K, V>` |
-| Optional field | `field?: Type` |
+## CLI Reference
 
-## Supported Types
+```
+fluorite <COMMAND>
 
-### Basic Primitives
-- `String`, `Bool`
-- `Int32`, `Int64`, `UInt32`, `UInt64`
-- `Float32`, `Float64`
-
-### Extended Primitives
-- `Uuid`, `Decimal`, `Bytes`, `Url`
-- `DateTime`, `DateTimeUtc`, `DateTimeTz`
-- `Date`, `Time`, `Duration`
-- `Timestamp`, `TimestampMillis`
-
-### Collections
-- `Vec<T>` / `List<T>`
-- `Map<K, V>`
-
-### Custom Types
-- `struct` - Object definitions
-- `enum` - Enum definitions
-- `union` - Adjacently tagged unions (see below)
-- `type` - Type aliases
-- `Option<T>` - Optional fields
-- `Any` - Dynamic JSON-like values
-
-### Tagged Unions
-
-Fluorite uses **adjacently tagged** format for unions, producing consistent JSON for both Rust and TypeScript:
-
-```rust
-// IDL
-#[type_tag = "type"]       // Tag field name (default: "type")
-#[content_tag = "value"]   // Content field name (default: "value")
-union Event {
-    Created(User),         // Newtype: {type: "Created", value: {...}}
-    Deleted,               // Unit: {type: "Deleted"}
-}
+Commands:
+  rust    Generate Rust code
+  ts      Generate TypeScript code
 ```
 
-**Rust output:**
-```rust
-#[serde(tag = "type", content = "value")]
-pub enum Event {
-    Created(User),
-    Deleted,
-}
-```
+### `fluorite rust`
 
-**TypeScript output:**
-```typescript
-export type Event =
-  | { type: "Created"; value: User }
-  | { type: "Deleted" };
-```
+| Flag | Default | Description |
+|------|---------|-------------|
+| `--inputs` | *required* | Input `.fl` files |
+| `--output` | *required* | Output directory |
+| `--single-file` | `true` | Put all types in one `mod.rs` |
+| `--any-type` | `fluorite::Any` | Rust type for `Any` |
+| `--derives` | | Custom derives (replaces defaults) |
+| `--extra-derives` | | Additional derives |
+| `--generate-new` | `true` | Generate `derive_new::new` |
+| `--visibility` | `public` | Type visibility |
 
-### Attributes
-- `#[rename = "value"]` - Field/type renaming
-- `#[rename_all = "camelCase"]` - Case conversion
-- `#[alias = "alt_name"]` - Deserialization aliases
-- `#[default]` - Default values
-- `#[skip_if_none]`, `#[skip_if_default]` - Conditional serialization
-- `#[flatten]` - Flatten nested structures
-- `#[deprecated]` - Deprecation notices
-- `#[type_tag = "type"]` - Union tag field name
-- `#[content_tag = "value"]` - Union content field name
+### `fluorite ts`
+
+| Flag | Default | Description |
+|------|---------|-------------|
+| `--inputs` | *required* | Input `.fl` files |
+| `--output` | *required* | Output directory |
+| `--single-file` | `false` | Put all types in one `index.ts` |
+| `--any-type` | `unknown` | TypeScript type for `Any` |
+| `--readonly` | `false` | Generate `readonly` properties |
+| `--package-name` | | Override output directory name |
+
+---
+
+## Examples
+
+The [examples/](examples/) directory contains complete projects:
+
+- **[examples/demo](examples/demo)** &mdash; Rust project with `build.rs` integration, multi-package schemas, and cross-package imports
+- **[examples/demo-ts](examples/demo-ts)** &mdash; TypeScript project using generated types from the same schemas
+
+The demo schemas in [examples/demo/fluorite/](examples/demo/fluorite/) show real-world patterns:
+
+| File | What it demonstrates |
+|------|---------------------|
+| `common.fl` | Shared types, `rename_all`, `skip_if_none`, `Any` type |
+| `users.fl` | Cross-package imports, tagged unions, type aliases |
+| `orders.fl` | Multiple imports, enums, complex structs |
+| `notifications.fl` | Unions with primitive variants (`PlainText(String)`) |
+
+---
 
 ## Development
 
-### Build Commands
-
 ```bash
-# Build entire workspace
+# Build
 cargo build
 
 # Run all tests
 cargo test
 
-# Run tests for specific package
-cargo test --package fluorite_codegen    # codegen library and CLI
-cargo test --package fluorite            # runtime library
+# Run all CI checks (format, lint, test)
+make all
+
+# Run Rust <-> TypeScript interop tests
+make interop-test
 ```
 
-### Make Commands
-
-| Command | Description |
-|---------|-------------|
-| `make all` | Run format check, lint, and tests |
-| `make build` | Build the project |
-| `make release` | Build in release mode |
+| Make target | Description |
+|-------------|-------------|
+| `make all` | Format check + lint + test |
 | `make test` | Run all tests |
 | `make fmt` | Format code |
-| `make fmt-check` | Check code formatting |
-| `make lint` | Run clippy lints |
-| `make check` | Run cargo check |
-| `make clean` | Clean build artifacts |
-
-## Architecture
-
-Fluorite uses a plugin-based code generation system:
-
-```
-CodeGenProvider (trait)
-├── PreProcessor        # Parse definitions → type metadata
-├── PackageWriter       # Write package module files
-├── ObjectWriter        # Write struct definitions
-├── EnumWriter          # Write enum definitions
-├── UnionWriter         # Write polymorphic tagged unions
-├── ListWriter          # Write list/vector types
-└── MapWriter           # Write map types
-```
-
-The **RustProvider** implements all traits for Rust code generation. The **TsTemplateGenerator** provides full TypeScript code generation using the same intermediate representation (IR) layer.
-
-### Key Components
-
-1. **IDL Parser** (`codegen/src/idl/`) - Lexer and parser for .fl files using `logos` and `chumsky`
-2. **IR Layer** (`codegen/src/code_gen/ir/`) - Language-agnostic type representation
-3. **Validation** (`codegen/src/code_gen/validation/`) - Schema validation
-4. **Templates** (`codegen/templates/`) - Askama templates for code generation
-5. **FileSystem Abstraction** (`codegen/src/code_gen/fs/`) - Testable I/O operations
+| `make lint` | Run clippy |
+| `make interop-test` | Rust/TypeScript round-trip tests |
 
 ## License
 
-This project is licensed under the MIT License.
+MIT
