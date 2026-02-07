@@ -73,7 +73,7 @@ bump-version:
 	echo "Bumping version from $$CURRENT to $$NEW_VERSION"; \
 	sed -i.bak "s/^version = \"$$CURRENT\"/version = \"$$NEW_VERSION\"/" Cargo.toml && rm Cargo.toml.bak; \
 	echo "Updating codegen dependency version to $$NEW_VERSION"; \
-	sed -i.bak "s/version = \"[^\"]*\"/version = \"$$NEW_VERSION\"/g" codegen/Cargo.toml && rm codegen/Cargo.toml.bak; \
+	sed -i.bak "/^fluorite = /s/version = \"[^\"]*\"/version = \"$$NEW_VERSION\"/" codegen/Cargo.toml && rm codegen/Cargo.toml.bak; \
 	$(MAKE) sync-versions
 
 # Release: bump version, commit, tag, and push
