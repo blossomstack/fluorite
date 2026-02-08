@@ -17,10 +17,14 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 FIXTURES_DIR="$SCRIPT_DIR/fixtures"
 RUST_TO_TS_DIR="$FIXTURES_DIR/rust_to_ts"
 TS_TO_RUST_DIR="$FIXTURES_DIR/ts_to_rust"
+RUST_TO_SWIFT_DIR="$FIXTURES_DIR/rust_to_swift"
+SWIFT_TO_RUST_DIR="$FIXTURES_DIR/swift_to_rust"
 
 # Create fixture directories
 mkdir -p "$RUST_TO_TS_DIR"
 mkdir -p "$TS_TO_RUST_DIR"
+mkdir -p "$RUST_TO_SWIFT_DIR"
+mkdir -p "$SWIFT_TO_RUST_DIR"
 
 # Track test results
 TESTS_PASSED=0
@@ -93,6 +97,23 @@ else
     info "Using ts-node for direct execution"
 fi
 
+# Step 4.5: Build Swift demo (if Swift is available)
+echo ""
+echo "Step 4.5: Building Swift demo..."
+if command -v swift &> /dev/null; then
+    cd "$SCRIPT_DIR/../../examples/demo-swift"
+    if swift build --quiet 2>/dev/null; then
+        pass "Swift demo built successfully"
+        SWIFT_AVAILABLE=true
+    else
+        fail "Swift demo build failed"
+        SWIFT_AVAILABLE=false
+    fi
+else
+    info "Swift not available, skipping Swift tests"
+    SWIFT_AVAILABLE=false
+fi
+
 # Step 5: Test Rust → TypeScript
 echo ""
 echo "========================================="
@@ -161,7 +182,67 @@ else
     fail "Rust failed to read TypeScript's JSON files"
 fi
 
-# Step 7: Summary
+# Step 7: Test Rust → Swift (if Swift available)
+if [ "$SWIFT_AVAILABLE" = true ]; then
+    echo ""
+    echo "========================================="
+    echo "Step 7: Testing Rust → Swift"
+    echo "========================================="
+
+    # Rust writes JSON files for Swift
+    cd "$SCRIPT_DIR/../../examples/demo"
+    info "Running Rust demo to write JSON files for Swift..."
+    cargo run --quiet -- write --output "$RUST_TO_SWIFT_DIR" 2>/dev/null || true
+
+    # Verify Rust wrote files
+    if [ -f "$RUST_TO_SWIFT_DIR/user.json" ]; then
+        pass "Rust wrote JSON files for Swift"
+    else
+        fail "Rust failed to write JSON files for Swift"
+    fi
+
+    # Swift reads and validates Rust's JSON
+    cd "$SCRIPT_DIR/../../examples/demo-swift"
+    info "Running Swift demo to read Rust's JSON files..."
+    if swift run Demo --read "$RUST_TO_SWIFT_DIR" 2>/dev/null; then
+        pass "Swift successfully read Rust's JSON files"
+    else
+        fail "Swift failed to read Rust's JSON files"
+    fi
+
+    # Step 8: Test Swift → Rust
+    echo ""
+    echo "========================================="
+    echo "Step 8: Testing Swift → Rust"
+    echo "========================================="
+
+    # Swift writes JSON files
+    cd "$SCRIPT_DIR/../../examples/demo-swift"
+    info "Running Swift demo to write JSON files..."
+    if swift run Demo --write "$SWIFT_TO_RUST_DIR" 2>/dev/null; then
+        pass "Swift wrote JSON files successfully"
+    else
+        fail "Swift failed to write JSON files"
+    fi
+
+    # Verify Swift wrote files
+    if [ -f "$SWIFT_TO_RUST_DIR/user.json" ]; then
+        pass "Swift JSON files exist"
+    else
+        fail "Swift failed to write JSON files"
+    fi
+
+    # Rust reads and validates Swift's JSON
+    cd "$SCRIPT_DIR/../../examples/demo"
+    info "Running Rust demo to read Swift's JSON files..."
+    if cargo run --quiet -- read --input "$SWIFT_TO_RUST_DIR" 2>/dev/null; then
+        pass "Rust successfully read Swift's JSON files"
+    else
+        fail "Rust failed to read Swift's JSON files"
+    fi
+fi
+
+# Final Summary
 echo ""
 echo "========================================="
 echo "Test Summary"
@@ -176,6 +257,10 @@ if [ $TESTS_FAILED -eq 0 ]; then
     echo "Tested scenarios:"
     echo "  ✓ Rust serializes → TypeScript deserializes"
     echo "  ✓ TypeScript serializes → Rust deserializes"
+    if [ "$SWIFT_AVAILABLE" = true ]; then
+        echo "  ✓ Rust serializes → Swift deserializes"
+        echo "  ✓ Swift serializes → Rust deserializes"
+    fi
     echo "  ✓ Multi-package types (common, users, orders, notifications)"
     echo "  ✓ Adjacently tagged unions"
     echo "  ✓ Cross-package type imports"

@@ -1,0 +1,66 @@
+{%- if !imports.is_empty() %}
+import Foundation
+import FluoriteRuntime
+{%- else %}
+import Foundation
+{%- endif %}
+
+{%- if doc != "" %}
+/// {{ doc|safe }}
+{%- endif %}
+{{ visibility }} enum {{ name }}: Codable, Equatable, Sendable {
+{%- for variant in variants %}
+{%- match variant %}
+{%- when SwiftUnionVariantTemplate::Unit with { case_name, serialized_name } %}
+    case {{ case_name }}
+{%- when SwiftUnionVariantTemplate::Newtype with { case_name, serialized_name, type_str } %}
+    case {{ case_name }}({{ type_str|safe }})
+{%- endmatch %}
+{%- endfor %}
+
+    enum CodingKeys: String, CodingKey {
+        case {{ tag_field }}
+        case {{ content_field }}
+    }
+
+    {{ visibility }} init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        let type = try container.decode(String.self, forKey: .{{ tag_field }})
+        switch type {
+{%- for variant in variants %}
+{%- match variant %}
+{%- when SwiftUnionVariantTemplate::Unit with { case_name, serialized_name } %}
+        case "{{ serialized_name }}":
+            self = .{{ case_name }}
+{%- when SwiftUnionVariantTemplate::Newtype with { case_name, serialized_name, type_str } %}
+        case "{{ serialized_name }}":
+            self = .{{ case_name }}(try container.decode({{ type_str|safe }}.self, forKey: .{{ content_field }}))
+{%- endmatch %}
+{%- endfor %}
+        default:
+            throw DecodingError.dataCorrupted(
+                DecodingError.Context(
+                    codingPath: decoder.codingPath,
+                    debugDescription: "Unknown type: \(type)"
+                )
+            )
+        }
+    }
+
+    {{ visibility }} func encode(to encoder: Encoder) throws {
+        var container = encoder.container(keyedBy: CodingKeys.self)
+        switch self {
+{%- for variant in variants %}
+{%- match variant %}
+{%- when SwiftUnionVariantTemplate::Unit with { case_name, serialized_name } %}
+        case .{{ case_name }}:
+            try container.encode("{{ serialized_name }}", forKey: .{{ tag_field }})
+{%- when SwiftUnionVariantTemplate::Newtype with { case_name, serialized_name, type_str } %}
+        case .{{ case_name }}(let value):
+            try container.encode("{{ serialized_name }}", forKey: .{{ tag_field }})
+            try container.encode(value, forKey: .{{ content_field }})
+{%- endmatch %}
+{%- endfor %}
+        }
+    }
+}

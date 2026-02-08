@@ -1,0 +1,33 @@
+{%- if !imports.is_empty() %}
+import Foundation
+import FluoriteRuntime
+{%- else %}
+import Foundation
+{%- endif %}
+
+{%- if doc != "" %}
+/// {{ doc|safe }}
+{%- endif %}
+{{ visibility }} struct {{ name }}: Codable, Equatable, Sendable {
+{%- for field in fields %}
+{%- if field.doc != "" %}
+    /// {{ field.doc|safe }}
+{%- endif %}
+{%- if field.deprecated %}
+    @available(*, deprecated)
+{%- endif %}
+    {{ visibility }} let {{ field.code_name }}: {{ field.type_str|safe }}
+{%- endfor %}
+{%- if needs_coding_keys %}
+
+    enum CodingKeys: String, CodingKey {
+{%- for field in fields %}
+{%- if field.needs_rename %}
+        case {{ field.code_name }} = "{{ field.original_name }}"
+{%- else %}
+        case {{ field.code_name }}
+{%- endif %}
+{%- endfor %}
+    }
+{%- endif %}
+}

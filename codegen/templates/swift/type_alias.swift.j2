@@ -1,0 +1,11 @@
+{%- if !imports.is_empty() %}
+import Foundation
+import FluoriteRuntime
+{%- else %}
+import Foundation
+{%- endif %}
+
+{%- if doc != "" %}
+/// {{ doc|safe }}
+{%- endif %}
+{{ visibility }} typealias {{ name }} = {{ target_type|safe }}

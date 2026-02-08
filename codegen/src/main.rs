@@ -94,6 +94,29 @@ enum Commands {
         #[arg(long)]
         package_name: Option<String>,
     },
+
+    /// Generate Swift code from .fl definitions
+    Swift {
+        /// Input .fl files
+        #[arg(short, long, required = true, num_args = 1..)]
+        inputs: Vec<String>,
+
+        /// Output directory
+        #[arg(short, long)]
+        output: String,
+
+        /// Generate all types in a single file per package
+        #[arg(long, default_value = "false")]
+        single_file: bool,
+
+        /// Custom type to use for 'Any' fields (default: AnyCodable)
+        #[arg(long, default_value = "AnyCodable")]
+        any_type: String,
+
+        /// Visibility for generated types (public, internal, package)
+        #[arg(long, default_value = "public")]
+        visibility: String,
+    },
 }
 
 fn main() -> anyhow::Result<()> {
@@ -185,6 +208,41 @@ fn main() -> anyhow::Result<()> {
             generator.generate_from_schema(&schema)?;
 
             println!("TypeScript code generation complete!");
+        }
+
+        Commands::Swift {
+            inputs,
+            output,
+            single_file,
+            any_type,
+            visibility,
+        } => {
+            // Load inputs from .fl files
+            let schema = load_fl_inputs(&inputs)?;
+
+            // Build options
+            let mut options = code_gen::swift::SwiftOptions::new(output)
+                .with_single_file(single_file)
+                .with_any_type(&any_type);
+
+            // Handle visibility
+            let vis = match visibility.to_lowercase().as_str() {
+                "public" | "pub" => code_gen::swift::SwiftVisibility::Public,
+                "internal" => code_gen::swift::SwiftVisibility::Internal,
+                "package" => code_gen::swift::SwiftVisibility::Package,
+                _ => {
+                    eprintln!("Unknown visibility '{}', using 'public'", visibility);
+                    code_gen::swift::SwiftVisibility::Public
+                }
+            };
+            options = options.with_visibility(vis);
+
+            // Generate
+            let fs = Arc::new(RealFileSystem::new());
+            let generator = code_gen::swift::SwiftTemplateGenerator::new(options, fs);
+            generator.generate_from_schema(&schema)?;
+
+            println!("Swift code generation complete!");
         }
     }
 
