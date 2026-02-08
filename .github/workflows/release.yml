@@ -74,6 +74,8 @@ jobs:
         run: |
           mkdir -p npm/${{ matrix.npm_package }}/bin
           cp target/${{ matrix.target }}/release/${{ matrix.artifact_name }} npm/${{ matrix.npm_package }}/bin/
+          # Ensure binary has execute permission (required for Unix platforms)
+          chmod +x npm/${{ matrix.npm_package }}/bin/${{ matrix.artifact_name }} 2>/dev/null || true
 
       - name: Upload npm package artifact
         uses: actions/upload-artifact@v4
