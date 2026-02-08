@@ -4,7 +4,9 @@
 [![docs.rs](https://img.shields.io/docsrs/fluorite)](https://docs.rs/fluorite/latest)
 [![CI](https://github.com/blossomstack/fluorite/actions/workflows/ci.yml/badge.svg)](https://github.com/blossomstack/fluorite/actions/workflows/ci.yml)
 
-Fluorite generates **Rust** and **TypeScript** code from a shared schema language. Define your types once in `.fl` files, then generate type-safe, serialization-ready code for both languages.
+Fluorite generates **Rust**, **TypeScript**, and **Swift** code from a shared schema language. Define your types once in `.fl` files, then generate type-safe, serialization-ready code for all three languages.
+
+All generated code uses **camelCase** as the JSON serialization format, ensuring consistent cross-language interoperability without any configuration.
 
 ## Quick Start
 
@@ -47,9 +49,12 @@ fluorite rust --inputs schema.fl --output ./src/generated
 
 # TypeScript
 fluorite ts --inputs schema.fl --output ./src/generated
+
+# Swift
+fluorite swift --inputs schema.fl --output ./Sources/Generated
 ```
 
-That's it. You now have type-safe structs (Rust) and interfaces (TypeScript) with full serialization support.
+That's it. You now have type-safe structs (Rust), interfaces (TypeScript), and Codable types (Swift) with full serialization support.
 
 ---
 
@@ -61,7 +66,6 @@ Fluorite uses `.fl` files with a Rust-like syntax. Here's what you can express:
 
 ```rust
 /// A customer order
-#[rename_all = "camelCase"]
 struct Order {
     order_id: String,
     total: f64,
@@ -70,9 +74,13 @@ struct Order {
 }
 ```
 
+Fields are automatically serialized as **camelCase** in JSON across all languages. No annotation needed &mdash; `order_id` becomes `"orderId"` in JSON.
+
 **Rust output** &mdash; a `#[derive(Serialize, Deserialize)]` struct with `#[serde(rename_all = "camelCase")]`.
 
 **TypeScript output** &mdash; an exported interface with camelCase field names.
+
+**Swift output** &mdash; a `Codable` struct with camelCase properties and `CodingKeys`.
 
 ### Enums
 
@@ -86,11 +94,11 @@ enum OrderStatus {
 }
 ```
 
-**Rust** &mdash; a standard `enum` with serde derives. **TypeScript** &mdash; a string literal union type.
+**Rust** &mdash; a standard `enum` with serde derives. **TypeScript** &mdash; a string literal union type. **Swift** &mdash; a `String`-backed enum with `Codable` conformance.
 
 ### Tagged Unions
 
-Fluorite uses **adjacently tagged** unions, producing consistent JSON across both languages:
+Fluorite uses **adjacently tagged** unions, producing consistent JSON across all languages:
 
 ```rust
 #[type_tag = "type"]
@@ -124,6 +132,16 @@ export type OrderEvent =
   | { type: "Created"; value: Order }
   | { type: "StatusChanged"; value: StatusChange }
   | { type: "Cancelled" };
+```
+
+**Swift output:**
+```swift
+public enum OrderEvent: Codable, Equatable, Sendable {
+    case created(Order)
+    case statusChanged(StatusChange)
+    case cancelled
+    // Custom Codable implementation for adjacently tagged format
+}
 ```
 
 ### Type Aliases
@@ -162,7 +180,7 @@ struct User {
 
 ### Doc Comments
 
-Lines starting with `///` become doc comments in Rust and JSDoc comments in TypeScript:
+Lines starting with `///` become doc comments in Rust, JSDoc comments in TypeScript, and documentation comments in Swift:
 
 ```rust
 /// A user in the system.
@@ -178,7 +196,6 @@ struct User {
 | Attribute | Applies to | Effect |
 |-----------|-----------|--------|
 | `#[rename = "name"]` | fields, variants | Rename in JSON |
-| `#[rename_all = "camelCase"]` | structs, enums | Rename all fields/variants |
 | `#[alias = "alt"]` | fields | Accept alternate name during deserialization |
 | `#[default]` | fields | Use `Default::default()` if missing |
 | `#[skip_if_none]` | fields | Omit if `None` |
@@ -188,26 +205,28 @@ struct User {
 | `#[type_tag = "..."]` | unions | Tag field name (default: `"type"`) |
 | `#[content_tag = "..."]` | unions | Content field name (default: `"value"`) |
 
+> **Note:** All fields are serialized as camelCase by default. Use `#[rename = "..."]` to override individual fields when needed.
+
 ### Type Reference
 
-| Fluorite Type | Rust | TypeScript |
-|---------------|------|------------|
-| `String` | `String` | `string` |
-| `bool` | `bool` | `boolean` |
-| `i32`, `i64` | `i32`, `i64` | `number` |
-| `u32`, `u64` | `u32`, `u64` | `number` |
-| `f32`, `f64` | `f32`, `f64` | `number` |
-| `Uuid` | `uuid::Uuid` | `string` |
-| `Decimal` | `rust_decimal::Decimal` | `string` |
-| `Bytes` | `Vec<u8>` | `string` |
-| `Url` | `url::Url` | `string` |
-| `DateTime`, `DateTimeUtc`, `DateTimeTz` | `chrono` types | `string` |
-| `Date`, `Time`, `Duration` | `chrono` types | `string` |
-| `Timestamp`, `TimestampMillis` | `i64` | `number` |
-| `Any` | `fluorite::Any` | `unknown` |
-| `Option<T>` | `Option<T>` | `T \| undefined` (optional field) |
-| `Vec<T>` | `Vec<T>` | `T[]` |
-| `Map<K, V>` | `HashMap<K, V>` | `Record<K, V>` |
+| Fluorite Type | Rust | TypeScript | Swift |
+|---------------|------|------------|-------|
+| `String` | `String` | `string` | `String` |
+| `bool` | `bool` | `boolean` | `Bool` |
+| `i32`, `i64` | `i32`, `i64` | `number` | `Int32`, `Int64` |
+| `u32`, `u64` | `u32`, `u64` | `number` | `UInt32`, `UInt64` |
+| `f32`, `f64` | `f32`, `f64` | `number` | `Float`, `Double` |
+| `Uuid` | `uuid::Uuid` | `string` | `UUID` |
+| `Decimal` | `rust_decimal::Decimal` | `string` | `Decimal` |
+| `Bytes` | `Vec<u8>` | `string` | `Data` |
+| `Url` | `url::Url` | `string` | `URL` |
+| `DateTime`, `DateTimeUtc`, `DateTimeTz` | `chrono` types | `string` | `Date` |
+| `Date`, `Time`, `Duration` | `chrono` types | `string` | `String` |
+| `Timestamp`, `TimestampMillis` | `i64` | `number` | `Date` |
+| `Any` | `fluorite::Any` | `unknown` | `AnyCodable` |
+| `Option<T>` | `Option<T>` | `T \| undefined` (optional field) | `T?` |
+| `Vec<T>` | `Vec<T>` | `T[]` | `[T]` |
+| `Map<K, V>` | `HashMap<K, V>` | `Record<K, V>` | `[K: V]` |
 
 ---
 
@@ -311,6 +330,41 @@ TypeScriptOptions::new(output_dir)
 
 ---
 
+## Using Fluorite for Swift
+
+Generate Swift `Codable` types for iOS/macOS projects.
+
+### Via CLI
+
+```bash
+fluorite swift --inputs schemas/users.fl --output ./Sources/Generated
+```
+
+### Via Rust API
+
+```rust
+use fluorite_codegen::code_gen::swift::SwiftOptions;
+
+let options = SwiftOptions::new("./Sources/Generated")
+    .with_single_file(false)
+    .with_visibility(SwiftVisibility::Public);
+
+fluorite_codegen::compile_swift_with_options(options, &["schemas/users.fl"]).unwrap();
+```
+
+### Swift Options
+
+```rust
+SwiftOptions::new(output_dir)
+    .with_single_file(false)       // Separate file per type (default: false)
+    .with_any_type("AnyCodable")   // Map `Any` to this type (default: "AnyCodable")
+    .with_visibility(SwiftVisibility::Public)  // public, internal, or package
+```
+
+Generated Swift types conform to `Codable`, `Equatable`, and `Sendable`. Unions include a custom `Codable` implementation for adjacently tagged JSON format.
+
+---
+
 ## CLI Reference
 
 ```
@@ -319,6 +373,7 @@ fluorite <COMMAND>
 Commands:
   rust    Generate Rust code
   ts      Generate TypeScript code
+  swift   Generate Swift code
 ```
 
 ### `fluorite rust`
@@ -345,6 +400,16 @@ Commands:
 | `--readonly` | `false` | Generate `readonly` properties |
 | `--package-name` | | Override output directory name |
 
+### `fluorite swift`
+
+| Flag | Default | Description |
+|------|---------|-------------|
+| `--inputs` | *required* | Input `.fl` files |
+| `--output` | *required* | Output directory |
+| `--single-file` | `false` | Separate file per type or all in one |
+| `--any-type` | `AnyCodable` | Swift type for `Any` |
+| `--visibility` | `public` | Access level: `public`, `internal`, `package` |
+
 ---
 
 ## Examples
@@ -358,7 +423,7 @@ The demo schemas in [examples/demo/fluorite/](examples/demo/fluorite/) show real
 
 | File | What it demonstrates |
 |------|---------------------|
-| `common.fl` | Shared types, `rename_all`, `skip_if_none`, `Any` type |
+| `common.fl` | Shared types, `skip_if_none`, `Any` type |
 | `users.fl` | Cross-package imports, tagged unions, type aliases |
 | `orders.fl` | Multiple imports, enums, complex structs |
 | `notifications.fl` | Unions with primitive variants (`PlainText(String)`) |
