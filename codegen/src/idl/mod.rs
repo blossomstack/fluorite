@@ -143,6 +143,33 @@ pub fn parse_string_to_ir(source: &str) -> Result<IRSchema> {
     converter.convert_files(&[ast])
 }
 
+/// Parse multiple .fl source strings and convert to IR schema
+///
+/// This is useful for testing multi-package scenarios where types
+/// from one package reference types from another.
+///
+/// # Example
+///
+/// ```rust
+/// use fluorite_codegen::idl::parse_strings_to_ir;
+///
+/// let common = r#"
+///     package common;
+///     struct Address { city: String }
+/// "#;
+/// let users = r#"
+///     package users;
+///     use common.Address;
+///     struct User { address: Address }
+/// "#;
+/// // let schema = parse_strings_to_ir(&[common, users]).unwrap();
+/// ```
+pub fn parse_strings_to_ir(sources: &[&str]) -> Result<IRSchema> {
+    let asts: Result<Vec<_>> = sources.iter().map(|s| parse_string(s)).collect();
+    let converter = AstToIrConverter::new();
+    converter.convert_files(&asts?)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

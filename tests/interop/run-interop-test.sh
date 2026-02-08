@@ -85,16 +85,16 @@ if [ ! -d "node_modules" ]; then
     npm install --silent 2>/dev/null || true
 fi
 
-# Build TypeScript
-info "Building TypeScript..."
-npx tsc 2>/dev/null || true
+# Clean stale build artifacts
+rm -rf dist/
 
-# Check if dist/index.js exists
-if [ -f "dist/src/index.js" ]; then
+# Build TypeScript - FAIL if compilation errors
+info "Building TypeScript..."
+if npx tsc; then
     pass "TypeScript built successfully"
 else
-    # Try alternative: compile directly with ts-node
-    info "Using ts-node for direct execution"
+    fail "TypeScript compilation failed"
+    exit 1
 fi
 
 # Step 4.5: Build Swift demo (if Swift is available)
