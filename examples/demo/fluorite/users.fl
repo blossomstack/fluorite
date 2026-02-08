@@ -4,7 +4,6 @@ package demo.users;
 use demo.common.Address;
 
 /// A user in the system
-#[rename_all = "camelCase"]
 struct User {
     /// Unique identifier for the user
     id: String,
@@ -55,7 +54,6 @@ union UserEvent {
 }
 
 /// Status change details
-#[rename_all = "camelCase"]
 struct UserStatusChange {
     user_id: String,
     old_status: UserStatus,

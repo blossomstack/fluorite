@@ -30,6 +30,14 @@ function checkBinaryInstalled() {
     const binaryPath = path.join(packageDir, 'bin', `fluorite${ext}`);
 
     if (fs.existsSync(binaryPath)) {
+      // Ensure binary has execute permission (npm may strip it during publish/install)
+      if (process.platform !== 'win32') {
+        try {
+          fs.chmodSync(binaryPath, 0o755);
+        } catch (e) {
+          console.warn(`Warning: Could not set execute permission on ${binaryPath}: ${e.message}`);
+        }
+      }
       console.log(`fluorite binary installed successfully for ${platformKey}`);
     } else {
       console.warn(`Warning: Binary not found in ${packageName}`);

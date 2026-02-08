@@ -2,9 +2,7 @@
 /// {{ doc }}
 {%- endif %}
 {{ derives }}
-{%- if rename_all != "" %}
-#[serde(rename_all = "{{ rename_all }}")]
-{%- endif %}
+#[serde(rename_all = "camelCase")]
 {%- if deny_unknown_fields %}
 #[serde(deny_unknown_fields)]
 {%- endif %}

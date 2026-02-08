@@ -63,6 +63,15 @@ if (!binaryPath) {
   process.exit(1);
 }
 
+// Ensure binary has execute permission (npm may strip it during publish/install)
+if (process.platform !== 'win32') {
+  try {
+    fs.chmodSync(binaryPath, 0o755);
+  } catch (e) {
+    // Ignore permission errors - spawn will fail with a clearer message
+  }
+}
+
 const child = spawn(binaryPath, process.argv.slice(2), {
   stdio: 'inherit'
 });

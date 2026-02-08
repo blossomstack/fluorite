@@ -359,7 +359,6 @@ fn create_test_schema() -> IRSchema {
                     },
                 ],
                 doc: None,
-                rename_all: None,
                 deny_unknown_fields: false,
             }),
             IRType::Enum(IREnum {
@@ -449,7 +448,6 @@ fn create_test_schema() -> IRSchema {
                     },
                 ],
                 doc: None,
-                rename_all: None,
                 deny_unknown_fields: false,
             }),
             IRType::Struct(IRStruct {
@@ -499,7 +497,6 @@ fn create_test_schema() -> IRSchema {
                     },
                 ],
                 doc: None,
-                rename_all: None,
                 deny_unknown_fields: false,
             }),
             // Address union with adjacently tagged format
@@ -568,7 +565,6 @@ fn create_test_schema() -> IRSchema {
                     },
                 ],
                 doc: None,
-                rename_all: None,
                 deny_unknown_fields: false,
             }),
             IRType::Struct(IRStruct {
@@ -604,7 +600,6 @@ fn create_test_schema() -> IRSchema {
                     },
                 ],
                 doc: None,
-                rename_all: None,
                 deny_unknown_fields: false,
             }),
             IRType::TypeAlias(IRTypeAlias {

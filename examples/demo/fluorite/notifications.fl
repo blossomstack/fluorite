@@ -11,7 +11,6 @@ union Message {
 }
 
 /// User-related notification
-#[rename_all = "camelCase"]
 struct UserNotification {
     title: String,
     body: String,
@@ -20,7 +19,6 @@ struct UserNotification {
 }
 
 /// Order-related notification
-#[rename_all = "camelCase"]
 struct OrderNotification {
     title: String,
     body: String,
@@ -29,7 +27,6 @@ struct OrderNotification {
 }
 
 /// System alert
-#[rename_all = "camelCase"]
 struct SystemAlert {
     title: String,
     body: String,
@@ -55,7 +52,6 @@ enum DeliveryStatus {
 }
 
 /// A queued notification with delivery tracking
-#[rename_all = "camelCase"]
 struct QueuedNotification {
     id: String,
     message: Message,

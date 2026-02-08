@@ -227,7 +227,6 @@ fn test_parse_doc_comments() {
 fn test_parse_attributes() {
     let source = r#"
         package test;
-        #[rename_all = "camelCase"]
         #[deny_unknown_fields]
         struct User {
             #[rename = "userName"]
@@ -243,7 +242,7 @@ fn test_parse_attributes() {
     let ast = result.unwrap();
     match &ast.items[0] {
         fluorite_codegen::idl::ast::AstItem::Struct(s) => {
-            assert_eq!(s.attrs.len(), 2);
+            assert_eq!(s.attrs.len(), 1);
             assert_eq!(s.fields[0].attrs.len(), 2);
             assert_eq!(s.fields[1].attrs.len(), 1);
         }

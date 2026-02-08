@@ -9,8 +9,6 @@ pub struct StructTemplate {
     pub derives: String,
     pub name: String,
     pub fields: Vec<FieldTemplate>,
-    /// Rename all fields according to case convention
-    pub rename_all: String,
     /// Deny unknown fields during deserialization
     pub deny_unknown_fields: bool,
     /// Documentation comment for this struct

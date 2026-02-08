@@ -89,14 +89,12 @@ impl AstToIrConverter {
             .collect();
 
         // Extract attributes
-        let rename_all = self.get_rename_all_attr(&ast_struct.attrs);
         let deny_unknown_fields = self.has_attr(&ast_struct.attrs, "deny_unknown_fields");
 
         Ok(IRType::Struct(IRStruct {
             name: ast_struct.name.value.clone(),
             fields,
             doc: ast_struct.doc.clone(),
-            rename_all,
             deny_unknown_fields,
         }))
     }
@@ -282,10 +280,6 @@ impl AstToIrConverter {
             .filter(|a| a.name.value == name)
             .filter_map(|a| a.value.as_ref().map(|v| v.value.clone()))
             .collect()
-    }
-
-    fn get_rename_all_attr(&self, attrs: &[AstAttribute]) -> Option<String> {
-        self.get_attr_value(attrs, "rename_all")
     }
 }
 

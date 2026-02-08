@@ -317,7 +317,6 @@ mod ir_type_tests {
             name: "User".to_string(),
             fields: vec![],
             doc: None,
-            rename_all: None,
             deny_unknown_fields: false,
         });
         assert_eq!(ir_type.name(), "User");
@@ -412,7 +411,6 @@ mod validator_tests {
                         deprecated: false,
                     }],
                     doc: None,
-                    rename_all: None,
                     deny_unknown_fields: false,
                 }),
                 IRType::Enum(IREnum {
@@ -452,7 +450,6 @@ mod validator_tests {
                     deprecated: false,
                 }],
                 doc: None,
-                rename_all: None,
                 deny_unknown_fields: false,
             })],
         )]);
@@ -480,14 +477,12 @@ mod validator_tests {
                     name: "User".to_string(),
                     fields: vec![],
                     doc: None,
-                    rename_all: None,
                     deny_unknown_fields: false,
                 }),
                 IRType::Struct(IRStruct {
                     name: "User".to_string(),
                     fields: vec![],
                     doc: None,
-                    rename_all: None,
                     deny_unknown_fields: false,
                 }),
             ],
@@ -642,7 +637,6 @@ mod validator_tests {
                     name: "TypeA".to_string(),
                     fields: vec![],
                     doc: None,
-                    rename_all: None,
                     deny_unknown_fields: false,
                 })],
             ),
@@ -665,7 +659,6 @@ mod validator_tests {
                         deprecated: false,
                     }],
                     doc: None,
-                    rename_all: None,
                     deny_unknown_fields: false,
                 })],
             ),
@@ -716,7 +709,6 @@ mod validator_tests {
                     },
                 ],
                 doc: None,
-                rename_all: None,
                 deny_unknown_fields: false,
             })],
         )]);
@@ -1224,7 +1216,6 @@ fn create_test_schema() -> IRSchema {
                     },
                 ],
                 doc: None,
-                rename_all: None,
                 deny_unknown_fields: false,
             }),
             IRType::Enum(IREnum {
@@ -1314,7 +1305,6 @@ fn create_test_schema() -> IRSchema {
                     },
                 ],
                 doc: None,
-                rename_all: None,
                 deny_unknown_fields: false,
             }),
             IRType::Struct(IRStruct {
@@ -1364,7 +1354,6 @@ fn create_test_schema() -> IRSchema {
                     },
                 ],
                 doc: None,
-                rename_all: None,
                 deny_unknown_fields: false,
             }),
             // Address union with adjacently tagged format
@@ -1433,7 +1422,6 @@ fn create_test_schema() -> IRSchema {
                     },
                 ],
                 doc: None,
-                rename_all: None,
                 deny_unknown_fields: false,
             }),
             IRType::Struct(IRStruct {
@@ -1469,7 +1457,6 @@ fn create_test_schema() -> IRSchema {
                     },
                 ],
                 doc: None,
-                rename_all: None,
                 deny_unknown_fields: false,
             }),
             IRType::TypeAlias(IRTypeAlias {

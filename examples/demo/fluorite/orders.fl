@@ -5,7 +5,6 @@ use demo.common.Address;
 use demo.users.User;
 
 /// Represents a customer order
-#[rename_all = "camelCase"]
 struct Order {
     /// Unique order identifier
     id: String,
@@ -30,7 +29,6 @@ struct Order {
 }
 
 /// An item within an order
-#[rename_all = "camelCase"]
 struct OrderItem {
     /// Product identifier
     product_id: String,
@@ -63,7 +61,6 @@ union OrderEvent {
 }
 
 /// Order status change details
-#[rename_all = "camelCase"]
 struct OrderStatusChange {
     order_id: String,
     old_status: OrderStatus,
@@ -72,7 +69,6 @@ struct OrderStatusChange {
 }
 
 /// Order cancellation details
-#[rename_all = "camelCase"]
 struct OrderCancellation {
     order_id: String,
     reason: String,

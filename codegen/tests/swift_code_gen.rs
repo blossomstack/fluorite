@@ -242,7 +242,7 @@ fn test_swift_coding_keys() -> anyhow::Result<()> {
         "Should have CodingKeys enum"
     );
     assert!(
-        content.contains("case orderType = \"order_type\""),
+        content.contains("case orderType = \"type\""),
         "Should map Swift name to JSON key"
     );
 
@@ -384,7 +384,6 @@ fn create_test_schema() -> IRSchema {
                     },
                 ],
                 doc: None,
-                rename_all: None,
                 deny_unknown_fields: false,
             }),
             IRType::Enum(IREnum {
@@ -416,7 +415,6 @@ fn create_test_schema() -> IRSchema {
                     deprecated: false,
                 }],
                 doc: None,
-                rename_all: None,
                 deny_unknown_fields: false,
             }),
             IRType::Union(IRUnion {
@@ -449,7 +447,6 @@ fn create_test_schema() -> IRSchema {
                     deprecated: false,
                 }],
                 doc: None,
-                rename_all: None,
                 deny_unknown_fields: false,
             }),
             IRType::TypeAlias(IRTypeAlias {
@@ -512,7 +509,6 @@ fn create_simple_schema() -> IRSchema {
                 },
             ],
             doc: None,
-            rename_all: None,
             deny_unknown_fields: false,
         })],
     };
@@ -548,7 +544,7 @@ fn create_schema_with_rename() -> IRSchema {
                     field_type: IRFieldType::Primitive(IRPrimitive::String),
                     is_optional: false,
                     is_boxed: false,
-                    rename: None,
+                    rename: Some("type".to_string()),
                     doc: None,
                     alias: vec![],
                     default: None,
@@ -559,7 +555,6 @@ fn create_schema_with_rename() -> IRSchema {
                 },
             ],
             doc: None,
-            rename_all: None,
             deny_unknown_fields: false,
         })],
     };
@@ -760,7 +755,6 @@ fn create_schema_with_primitives() -> IRSchema {
                 },
             ],
             doc: None,
-            rename_all: None,
             deny_unknown_fields: false,
         })],
     };
@@ -807,7 +801,6 @@ fn create_schema_with_any() -> IRSchema {
                 },
             ],
             doc: None,
-            rename_all: None,
             deny_unknown_fields: false,
         })],
     };

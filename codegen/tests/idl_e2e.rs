@@ -220,7 +220,6 @@ fn test_fl_attributes() {
     let fl_source = r#"
         package test;
 
-        #[rename_all = "camelCase"]
         struct User {
             #[rename = "userName"]
             name: String,

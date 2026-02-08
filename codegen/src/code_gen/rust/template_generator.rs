@@ -113,7 +113,6 @@ impl RustTemplateGenerator {
             derives: self.options.get_derives_string(),
             name: s.name.clone(),
             fields,
-            rename_all: s.rename_all.clone().unwrap_or_default(),
             deny_unknown_fields: s.deny_unknown_fields,
             doc: s.doc.clone().unwrap_or_default(),
         };
