@@ -12,7 +12,7 @@
     )
 )]
 
-use std::path::Path;
+use std::path::{Path, PathBuf};
 use std::sync::Arc;
 
 use clap::{Parser, Subcommand};
@@ -35,7 +35,7 @@ struct Cli {
 enum Commands {
     /// Generate Rust code from .fl definitions
     Rust {
-        /// Input .fl files
+        /// Input .fl files or directories containing .fl files
         #[arg(short, long, required = true, num_args = 1..)]
         inputs: Vec<String>,
 
@@ -70,7 +70,7 @@ enum Commands {
 
     /// Generate TypeScript code from .fl definitions
     Ts {
-        /// Input .fl files
+        /// Input .fl files or directories containing .fl files
         #[arg(short, long, required = true, num_args = 1..)]
         inputs: Vec<String>,
 
@@ -97,7 +97,7 @@ enum Commands {
 
     /// Generate Swift code from .fl definitions
     Swift {
-        /// Input .fl files
+        /// Input .fl files or directories containing .fl files
         #[arg(short, long, required = true, num_args = 1..)]
         inputs: Vec<String>,
 
@@ -249,8 +249,40 @@ fn main() -> anyhow::Result<()> {
     Ok(())
 }
 
-/// Load IR schema from .fl input files
+/// Load IR schema from .fl input files or directories containing .fl files
 fn load_fl_inputs(inputs: &[String]) -> anyhow::Result<code_gen::ir::IRSchema> {
-    let paths: Vec<&Path> = inputs.iter().map(Path::new).collect();
+    let collected = collect_fl_files(inputs)?;
+    if collected.is_empty() {
+        anyhow::bail!("No .fl files found in the provided inputs");
+    }
+    let paths: Vec<&Path> = collected.iter().map(|p| p.as_path()).collect();
     idl::parse_to_ir(&paths)
+}
+
+/// Collect `.fl` files from a list of paths that may include both files and directories.
+fn collect_fl_files<P: AsRef<Path>>(inputs: &[P]) -> anyhow::Result<Vec<PathBuf>> {
+    let mut files = Vec::new();
+    for input in inputs {
+        let path = input.as_ref();
+        if path.is_dir() {
+            collect_fl_files_recursive(path, &mut files)?;
+        } else {
+            files.push(path.to_path_buf());
+        }
+    }
+    files.sort();
+    Ok(files)
+}
+
+fn collect_fl_files_recursive(dir: &Path, files: &mut Vec<PathBuf>) -> anyhow::Result<()> {
+    for entry in std::fs::read_dir(dir)? {
+        let entry = entry?;
+        let path = entry.path();
+        if path.is_dir() {
+            collect_fl_files_recursive(&path, files)?;
+        } else if path.extension().and_then(|e| e.to_str()) == Some("fl") {
+            files.push(path);
+        }
+    }
+    Ok(())
 }

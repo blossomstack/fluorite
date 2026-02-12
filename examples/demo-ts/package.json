@@ -4,7 +4,7 @@
   "description": "TypeScript demo for Fluorite code generation with multi-package imports",
   "main": "dist/index.js",
   "scripts": {
-    "generate": "fluorite ts --inputs ../demo/fluorite/common.fl ../demo/fluorite/users.fl ../demo/fluorite/orders.fl ../demo/fluorite/notifications.fl --output ./generated",
+    "generate": "fluorite ts --inputs ../demo/fluorite --output ./generated",
     "build": "tsc",
     "start": "ts-node src/index.ts",
     "demo": "npm run generate && npm run build && node dist/index.js"
