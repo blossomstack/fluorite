@@ -51,6 +51,11 @@ updates:
       npm-dev:
         patterns:
           - "*"
+        # Breaking-prone dev majors come as individual, reviewable PRs (e.g.
+        # typescript 6 / @types/node 25 require tsconfig changes to build).
+        exclude-patterns:
+          - "typescript"
+          - "@types/node"
   - package-ecosystem: npm
     directory: "/codegen/tests/ts_e2e"
     schedule:
@@ -62,3 +67,8 @@ updates:
       npm-dev:
         patterns:
           - "*"
+        # Breaking-prone dev majors come as individual, reviewable PRs (e.g.
+        # typescript 6 / @types/node 25 require tsconfig changes to build).
+        exclude-patterns:
+          - "typescript"
+          - "@types/node"
