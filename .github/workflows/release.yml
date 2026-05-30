@@ -8,9 +8,10 @@ on:
 env:
   CARGO_TERM_COLOR: always
 
+# Least privilege by default; only create-release needs write (see below).
+# Publishing to crates.io / npm uses external registry tokens, not GITHUB_TOKEN.
 permissions:
-  contents: write
-  packages: write
+  contents: read
 
 jobs:
   # Build binaries for all supported platforms
@@ -44,30 +45,32 @@ jobs:
             cross: true
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
 
       - name: Install Rust toolchain
-        uses: dtolnay/rust-toolchain@stable
+        uses: dtolnay/rust-toolchain@3c5f7ea28cd621ae0bf5283f0e981fb97b8a7af9 # master
         with:
+          toolchain: stable
           targets: ${{ matrix.target }}
 
       - name: Cache Rust dependencies
-        uses: Swatinem/rust-cache@v2
+        uses: Swatinem/rust-cache@e18b497796c12c097a38f9edb9d0641fb99eee32 # v2.9.1
         with:
           key: ${{ matrix.target }}
           shared-key: release
 
       - name: Install cross-compilation tools
         if: matrix.cross
-        run: cargo install cross --git https://github.com/cross-rs/cross
+        # Pinned to a specific revision for reproducible, supply-chain-safe builds.
+        run: cargo install cross --git https://github.com/cross-rs/cross --rev 65fe72b0cdb1e7e0cc0652517498d4389cc8f5cf --locked
 
       - name: Build binary (native)
         if: ${{ !matrix.cross }}
-        run: cargo build --release --package fluorite_codegen --target ${{ matrix.target }}
+        run: cargo build --locked --release --package fluorite_codegen --target ${{ matrix.target }}
 
       - name: Build binary (cross)
         if: matrix.cross
-        run: cross build --release --package fluorite_codegen --target ${{ matrix.target }}
+        run: cross build --locked --release --package fluorite_codegen --target ${{ matrix.target }}
 
       - name: Prepare npm package
         shell: bash
@@ -78,13 +81,13 @@ jobs:
           chmod +x npm/${{ matrix.npm_package }}/bin/${{ matrix.artifact_name }} 2>/dev/null || true
 
       - name: Upload npm package artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
           name: ${{ matrix.npm_package }}
           path: npm/${{ matrix.npm_package }}
 
       - name: Upload binary for release
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
           name: binary-${{ matrix.target }}
           path: target/${{ matrix.target }}/release/${{ matrix.artifact_name }}
@@ -94,17 +97,20 @@ jobs:
     name: Create Release
     needs: build-binaries
     runs-on: ubuntu-latest
+    # Only this job needs write access, to publish the GitHub Release + assets.
+    permissions:
+      contents: write
     outputs:
       version: ${{ steps.get_version.outputs.version }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
 
       - name: Get version from tag
         id: get_version
         run: echo "version=${GITHUB_REF#refs/tags/v}" >> $GITHUB_OUTPUT
 
       - name: Download all binary artifacts
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
         with:
           pattern: binary-*
           path: binaries
@@ -128,7 +134,7 @@ jobs:
           ls -la release-assets/
 
       - name: Create Release
-        uses: softprops/action-gh-release@v2
+        uses: softprops/action-gh-release@3bb12739c298aeb8a4eeaf626c5b8d85266b0e65 # v2
         with:
           files: release-assets/*
           generate_release_notes: true
@@ -143,24 +149,26 @@ jobs:
     needs: create-release
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
 
       - name: Install Rust toolchain
-        uses: dtolnay/rust-toolchain@stable
+        uses: dtolnay/rust-toolchain@3c5f7ea28cd621ae0bf5283f0e981fb97b8a7af9 # master
+        with:
+          toolchain: stable
 
       - name: Cache Rust dependencies
-        uses: Swatinem/rust-cache@v2
+        uses: Swatinem/rust-cache@e18b497796c12c097a38f9edb9d0641fb99eee32 # v2.9.1
         with:
           shared-key: release
 
       - name: Publish fluorite (runtime) to crates.io
-        run: cargo publish --package fluorite --token ${{ secrets.CRATES_IO_TOKEN }}
+        run: cargo publish --locked --package fluorite --token ${{ secrets.CRATES_IO_TOKEN }}
 
       - name: Wait for crates.io to index
         run: sleep 30
 
       - name: Publish fluorite_codegen to crates.io
-        run: cargo publish --package fluorite_codegen --token ${{ secrets.CRATES_IO_TOKEN }}
+        run: cargo publish --locked --package fluorite_codegen --token ${{ secrets.CRATES_IO_TOKEN }}
 
   # Publish platform-specific npm packages
   publish-npm-platforms:
@@ -177,16 +185,16 @@ jobs:
           - fluorite-linux-arm64
           - fluorite-win32-x64
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
 
       - name: Setup Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
         with:
           node-version: '20'
           registry-url: 'https://registry.npmjs.org'
 
       - name: Download npm package artifact
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
         with:
           name: ${{ matrix.npm_package }}
           path: npm/${{ matrix.npm_package }}
@@ -209,10 +217,10 @@ jobs:
     needs: [publish-npm-platforms, create-release]
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
 
       - name: Setup Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
         with:
           node-version: '20'
           registry-url: 'https://registry.npmjs.org'

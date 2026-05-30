@@ -1,0 +1,52 @@
+version: 2
+updates:
+  # Rust crate dependencies across the workspace.
+  - package-ecosystem: cargo
+    directory: "/"
+    schedule:
+      interval: daily
+      time: "18:00"
+      timezone: "America/Vancouver"
+    open-pull-requests-limit: 10
+    groups:
+      all-cargo:
+        patterns:
+          - "*"
+
+  # Keeps the SHA-pinned GitHub Actions current (bumps both the pin and the
+  # trailing # vX.Y.Z version comment) across ci.yml and release.yml.
+  - package-ecosystem: github-actions
+    directory: "/"
+    schedule:
+      interval: daily
+      time: "18:00"
+      timezone: "America/Vancouver"
+    open-pull-requests-limit: 5
+    groups:
+      all-actions:
+        patterns:
+          - "*"
+
+  # npm dependencies used by the TypeScript interop tests / demo.
+  - package-ecosystem: npm
+    directory: "/examples/demo-ts"
+    schedule:
+      interval: daily
+      time: "18:00"
+      timezone: "America/Vancouver"
+    open-pull-requests-limit: 5
+    groups:
+      npm-dev:
+        patterns:
+          - "*"
+  - package-ecosystem: npm
+    directory: "/codegen/tests/ts_e2e"
+    schedule:
+      interval: daily
+      time: "18:00"
+      timezone: "America/Vancouver"
+    open-pull-requests-limit: 5
+    groups:
+      npm-dev:
+        patterns:
+          - "*"

@@ -1,5 +1,9 @@
 //! Parser for the Fluorite IDL using chumsky
 
+// chumsky's `Simple<Token>` error is large by design and pervades every parser
+// combinator here; boxing it isn't warranted for this internal parser.
+#![allow(clippy::result_large_err)]
+
 use chumsky::prelude::*;
 use logos::Logos;
 

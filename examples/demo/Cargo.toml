@@ -1,5 +1,6 @@
 [package]
 name = "demo"
+publish = false
 documentation = "https://docs.rs/fluorite"
 readme = "../README.md"
 version.workspace = true
