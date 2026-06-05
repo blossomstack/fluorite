@@ -116,11 +116,11 @@ pub enum Token {
     #[regex(r"///[^\n]*", |lex| {
         let s = lex.slice();
         s[3..].trim().to_string()
-    })]
+    }, allow_greedy = true)]
     DocComment(String),
 
     // Regular comment (skip)
-    #[regex(r"//[^\n]*", logos::skip)]
+    #[regex(r"//[^\n]*", logos::skip, allow_greedy = true)]
     Comment,
 }
 
