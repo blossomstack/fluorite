@@ -70,7 +70,9 @@ jobs:
         run: |
           mapfile -t pkgs < <(cargo metadata --no-deps --format-version 1 \
             | jq -r '.packages[] | select(.publish == null) | "\(.name) \(.version)"')
-          for pass in $(seq 1 ${#pkgs[@]}); do
+          # +1 ensures a final verification pass where remaining=0 exits cleanly
+          # even when the last crate publishes in the Nth pass.
+          for pass in $(seq 1 $((${#pkgs[@]} + 1))); do
             progress=0 remaining=0
             for pkg in "${pkgs[@]}"; do
               name=${pkg% *} version=${pkg#* }
