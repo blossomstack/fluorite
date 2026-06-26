@@ -26,7 +26,7 @@ updates:
     # above, so they open as individual PRs automatically.
 
   # Keeps the SHA-pinned GitHub Actions current (bumps both the pin and the
-  # trailing # vX.Y.Z version comment) across ci.yml and release.yml.
+  # trailing # vX.Y.Z version comment) across ci.yml and publish.yml.
   - package-ecosystem: github-actions
     directory: "/"
     schedule:
