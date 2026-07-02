@@ -10,7 +10,7 @@
     "demo": "npm run generate && npm run build && node dist/index.js"
   },
   "devDependencies": {
-    "@types/node": "^26.0.1",
+    "@types/node": "^26.1.0",
     "ts-node": "^10.9.0",
     "typescript": "^6.0.3"
   },
