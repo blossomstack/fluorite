@@ -3,9 +3,15 @@
 pub enum {{ name }} {
 {%- for variant in variants %}
 {%- match variant %}
-{%- when UnionVariantTemplate::Unit with (name) %}
+{%- when UnionVariantTemplate::Unit with { name, doc } %}
+{%- if doc != "" %}
+    /// {{ doc|safe }}
+{%- endif %}
     {{ name }},
-{%- when UnionVariantTemplate::Newtype with { name, type_str } %}
+{%- when UnionVariantTemplate::Newtype with { name, type_str, doc } %}
+{%- if doc != "" %}
+    /// {{ doc|safe }}
+{%- endif %}
     {{ name }}({{ type_str|safe }}),
 {%- endmatch %}
 {%- endfor %}

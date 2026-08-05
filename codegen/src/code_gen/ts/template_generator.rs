@@ -246,13 +246,22 @@ impl TsTemplateGenerator {
         variant: &IRUnionVariant,
         schema: &IRSchema,
     ) -> Result<TsUnionVariantTemplate> {
+        let doc = variant.doc().unwrap_or_default().to_owned();
         match variant {
-            IRUnionVariant::Unit(name) => Ok(TsUnionVariantTemplate::Unit(name.clone())),
-            IRUnionVariant::Newtype(name, field_type) => {
+            IRUnionVariant::Unit { name, .. } => Ok(TsUnionVariantTemplate::Unit {
+                name: name.clone(),
+                doc,
+            }),
+            IRUnionVariant::Newtype {
+                name,
+                ty: field_type,
+                ..
+            } => {
                 let type_str = self.format_type(field_type, schema)?;
                 Ok(TsUnionVariantTemplate::Newtype {
                     name: name.clone(),
                     type_str,
+                    doc,
                 })
             }
         }
@@ -431,8 +440,8 @@ impl TsTemplateGenerator {
 
         for variant in &u.variants {
             match variant {
-                IRUnionVariant::Unit(_) => {}
-                IRUnionVariant::Newtype(_, field_type) => {
+                IRUnionVariant::Unit { .. } => {}
+                IRUnionVariant::Newtype { ty: field_type, .. } => {
                     self.collect_type_references(
                         field_type,
                         schema,

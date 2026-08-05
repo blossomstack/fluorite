@@ -1,0 +1,11 @@
+# Askama picks its escaper from the template file extension, and its built-in
+# default maps `j2`/`jinja`/`jinja2` to the HTML escaper alongside html/htm/xml.
+# Every template here renders Rust, TypeScript or Swift — never HTML — so the
+# default silently turned quotes and angle brackets in doc comments into HTML
+# entities (blossomstack/fluorite#12).
+#
+# Mapping `j2` to the no-op Text escaper fixes the whole class rather than
+# individual interpolations, so a newly added `{{ ... }}` is correct by default.
+[[escaper]]
+path = "askama::filters::Text"
+extensions = ["j2"]

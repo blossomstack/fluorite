@@ -11,9 +11,15 @@ import Foundation
 {{ visibility }} enum {{ name }}: Codable, Equatable, Sendable {
 {%- for variant in variants %}
 {%- match variant %}
-{%- when SwiftUnionVariantTemplate::Unit with { case_name, serialized_name } %}
+{%- when SwiftUnionVariantTemplate::Unit with { case_name, serialized_name, doc } %}
+{%- if doc != "" %}
+    /// {{ doc|safe }}
+{%- endif %}
     case {{ case_name }}
-{%- when SwiftUnionVariantTemplate::Newtype with { case_name, serialized_name, type_str } %}
+{%- when SwiftUnionVariantTemplate::Newtype with { case_name, serialized_name, type_str, doc } %}
+{%- if doc != "" %}
+    /// {{ doc|safe }}
+{%- endif %}
     case {{ case_name }}({{ type_str|safe }})
 {%- endmatch %}
 {%- endfor %}
@@ -29,10 +35,10 @@ import Foundation
         switch type {
 {%- for variant in variants %}
 {%- match variant %}
-{%- when SwiftUnionVariantTemplate::Unit with { case_name, serialized_name } %}
+{%- when SwiftUnionVariantTemplate::Unit with { case_name, serialized_name, doc } %}
         case "{{ serialized_name }}":
             self = .{{ case_name }}
-{%- when SwiftUnionVariantTemplate::Newtype with { case_name, serialized_name, type_str } %}
+{%- when SwiftUnionVariantTemplate::Newtype with { case_name, serialized_name, type_str, doc } %}
         case "{{ serialized_name }}":
             self = .{{ case_name }}(try container.decode({{ type_str|safe }}.self, forKey: .{{ content_field }}))
 {%- endmatch %}
@@ -52,10 +58,10 @@ import Foundation
         switch self {
 {%- for variant in variants %}
 {%- match variant %}
-{%- when SwiftUnionVariantTemplate::Unit with { case_name, serialized_name } %}
+{%- when SwiftUnionVariantTemplate::Unit with { case_name, serialized_name, doc } %}
         case .{{ case_name }}:
             try container.encode("{{ serialized_name }}", forKey: .{{ tag_field }})
-{%- when SwiftUnionVariantTemplate::Newtype with { case_name, serialized_name, type_str } %}
+{%- when SwiftUnionVariantTemplate::Newtype with { case_name, serialized_name, type_str, doc } %}
         case .{{ case_name }}(let value):
             try container.encode("{{ serialized_name }}", forKey: .{{ tag_field }})
             try container.encode(value, forKey: .{{ content_field }})

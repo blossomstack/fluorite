@@ -58,12 +58,14 @@ pub enum SwiftUnionVariantTemplate {
     Unit {
         case_name: String,
         serialized_name: String,
+        doc: String,
     },
     /// Newtype variant: `.created(User)`
     Newtype {
         case_name: String,
         serialized_name: String,
         type_str: String,
+        doc: String,
     },
 }
 
