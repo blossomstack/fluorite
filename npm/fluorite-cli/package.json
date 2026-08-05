@@ -1,6 +1,6 @@
 {
-  "name": "@zhxiaogg/fluorite-cli",
-  "version": "0.6.1",
+  "name": "@blossomstack/fluorite-cli",
+  "version": "0.6.2",
   "description": "Code generator from YAML/Fluorite schema definitions - generates Rust and TypeScript",
   "bin": {
     "fluorite": "./bin/fluorite.js"
@@ -26,10 +26,10 @@
     "node": ">=16.0.0"
   },
   "optionalDependencies": {
-    "@zhxiaogg/fluorite-darwin-x64": "0.6.1",
-    "@zhxiaogg/fluorite-darwin-arm64": "0.6.1",
-    "@zhxiaogg/fluorite-linux-x64": "0.6.1",
-    "@zhxiaogg/fluorite-linux-arm64": "0.6.1",
-    "@zhxiaogg/fluorite-win32-x64": "0.6.1"
+    "@blossomstack/fluorite-darwin-x64": "0.6.2",
+    "@blossomstack/fluorite-darwin-arm64": "0.6.2",
+    "@blossomstack/fluorite-linux-x64": "0.6.2",
+    "@blossomstack/fluorite-linux-arm64": "0.6.2",
+    "@blossomstack/fluorite-win32-x64": "0.6.2"
   }
 }

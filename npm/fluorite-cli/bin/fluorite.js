@@ -7,11 +7,11 @@ const fs = require('fs');
 
 // Platform-specific package mapping
 const PLATFORM_PACKAGES = {
-  'darwin-x64': '@zhxiaogg/fluorite-darwin-x64',
-  'darwin-arm64': '@zhxiaogg/fluorite-darwin-arm64',
-  'linux-x64': '@zhxiaogg/fluorite-linux-x64',
-  'linux-arm64': '@zhxiaogg/fluorite-linux-arm64',
-  'win32-x64': '@zhxiaogg/fluorite-win32-x64',
+  'darwin-x64': '@blossomstack/fluorite-darwin-x64',
+  'darwin-arm64': '@blossomstack/fluorite-darwin-arm64',
+  'linux-x64': '@blossomstack/fluorite-linux-x64',
+  'linux-arm64': '@blossomstack/fluorite-linux-arm64',
+  'win32-x64': '@blossomstack/fluorite-win32-x64',
 };
 
 function getBinaryPath() {
@@ -52,8 +52,8 @@ if (!binaryPath) {
   console.error('');
   if (PLATFORM_PACKAGES[platformKey]) {
     console.error('Try reinstalling the package:');
-    console.error('  npm uninstall @zhxiaogg/fluorite-cli');
-    console.error('  npm install @zhxiaogg/fluorite-cli');
+    console.error('  npm uninstall @blossomstack/fluorite-cli');
+    console.error('  npm install @blossomstack/fluorite-cli');
   } else {
     console.error(`Your platform (${platformKey}) is not supported.`);
     console.error('');

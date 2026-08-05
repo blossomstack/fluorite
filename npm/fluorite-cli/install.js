@@ -1,16 +1,16 @@
 #!/usr/bin/env node
-// install.js - Post-install script for @zhxiaogg/fluorite-cli
+// install.js - Post-install script for @blossomstack/fluorite-cli
 // Binary is provided via optionalDependencies (platform-specific packages)
 
 const fs = require('fs');
 const path = require('path');
 
 const PLATFORM_PACKAGES = {
-  'darwin-x64': '@zhxiaogg/fluorite-darwin-x64',
-  'darwin-arm64': '@zhxiaogg/fluorite-darwin-arm64',
-  'linux-x64': '@zhxiaogg/fluorite-linux-x64',
-  'linux-arm64': '@zhxiaogg/fluorite-linux-arm64',
-  'win32-x64': '@zhxiaogg/fluorite-win32-x64',
+  'darwin-x64': '@blossomstack/fluorite-darwin-x64',
+  'darwin-arm64': '@blossomstack/fluorite-darwin-arm64',
+  'linux-x64': '@blossomstack/fluorite-linux-x64',
+  'linux-arm64': '@blossomstack/fluorite-linux-arm64',
+  'win32-x64': '@blossomstack/fluorite-win32-x64',
 };
 
 function checkBinaryInstalled() {
@@ -41,7 +41,7 @@ function checkBinaryInstalled() {
       console.log(`fluorite binary installed successfully for ${platformKey}`);
     } else {
       console.warn(`Warning: Binary not found in ${packageName}`);
-      console.warn('Try reinstalling: npm uninstall @zhxiaogg/fluorite-cli && npm install @zhxiaogg/fluorite-cli');
+      console.warn('Try reinstalling: npm uninstall @blossomstack/fluorite-cli && npm install @blossomstack/fluorite-cli');
     }
   } catch (e) {
     // Platform package not installed - this can happen if npm skipped the optional dependency

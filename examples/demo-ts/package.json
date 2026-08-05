@@ -15,6 +15,6 @@
     "typescript": "^7.0.2"
   },
   "dependencies": {
-    "@zhxiaogg/fluorite-cli": "file:../../npm/fluorite-cli"
+    "@blossomstack/fluorite-cli": "file:../../npm/fluorite-cli"
   }
 }

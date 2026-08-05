@@ -341,7 +341,7 @@ cargo run --package fluorite_codegen --bin fluorite -- ts \
   --single-file false
 
 # Or via npm package (after publishing)
-npx @zhxiaogg/fluorite-cli ts --inputs ./schemas/*.yaml --output ./src/generated
+npx @blossomstack/fluorite-cli ts --inputs ./schemas/*.yaml --output ./src/generated
 ```
 
 ### TypeScript-Specific Files

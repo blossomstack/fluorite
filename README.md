@@ -17,7 +17,7 @@ All generated code uses **camelCase** as the JSON serialization format, ensuring
 cargo install fluorite_codegen
 
 # or via npm
-npm install -D @zhxiaogg/fluorite-cli
+npm install -D @blossomstack/fluorite-cli
 ```
 
 ### 2. Write a Schema
@@ -291,7 +291,7 @@ RustOptions::new(output_dir)
 ### Via npm
 
 ```bash
-npm install -D @zhxiaogg/fluorite-cli
+npm install -D @blossomstack/fluorite-cli
 ```
 
 Add to `package.json`:
