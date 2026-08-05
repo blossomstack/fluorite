@@ -137,8 +137,8 @@ impl SwiftTemplateGenerator {
                 .iter()
                 .any(|f| self.field_type_needs_runtime(&f.field_type)),
             IRType::Union(u) => u.variants.iter().any(|v| match v {
-                IRUnionVariant::Unit(_) => false,
-                IRUnionVariant::Newtype(_, ft) => self.field_type_needs_runtime(ft),
+                IRUnionVariant::Unit { .. } => false,
+                IRUnionVariant::Newtype { ty: ft, .. } => self.field_type_needs_runtime(ft),
             }),
             IRType::TypeAlias(a) => match &a.target {
                 IRTypeAliasTarget::List(item) => self.field_type_needs_runtime(item),
@@ -357,17 +357,24 @@ impl SwiftTemplateGenerator {
         variant: &IRUnionVariant,
         schema: &IRSchema,
     ) -> Result<SwiftUnionVariantTemplate> {
+        let doc = variant.doc().unwrap_or_default().to_owned();
         match variant {
-            IRUnionVariant::Unit(name) => Ok(SwiftUnionVariantTemplate::Unit {
+            IRUnionVariant::Unit { name, .. } => Ok(SwiftUnionVariantTemplate::Unit {
                 case_name: to_camel_case(name),
                 serialized_name: name.clone(),
+                doc,
             }),
-            IRUnionVariant::Newtype(name, field_type) => {
+            IRUnionVariant::Newtype {
+                name,
+                ty: field_type,
+                ..
+            } => {
                 let type_str = self.format_type(field_type, schema)?;
                 Ok(SwiftUnionVariantTemplate::Newtype {
                     case_name: to_camel_case(name),
                     serialized_name: name.clone(),
                     type_str,
+                    doc,
                 })
             }
         }
@@ -508,8 +515,8 @@ impl SwiftTemplateGenerator {
 
         for variant in &u.variants {
             match variant {
-                IRUnionVariant::Unit(_) => {}
-                IRUnionVariant::Newtype(_, field_type) => {
+                IRUnionVariant::Unit { .. } => {}
+                IRUnionVariant::Newtype { ty: field_type, .. } => {
                     self.collect_type_references(
                         field_type,
                         package_type_names,

@@ -199,13 +199,22 @@ impl RustTemplateGenerator {
         variant: &IRUnionVariant,
         schema: &IRSchema,
     ) -> Result<UnionVariantTemplate> {
+        let doc = variant.doc().unwrap_or_default().to_owned();
         match variant {
-            IRUnionVariant::Unit(name) => Ok(UnionVariantTemplate::Unit(name.clone())),
-            IRUnionVariant::Newtype(name, field_type) => {
+            IRUnionVariant::Unit { name, .. } => Ok(UnionVariantTemplate::Unit {
+                name: name.clone(),
+                doc,
+            }),
+            IRUnionVariant::Newtype {
+                name,
+                ty: field_type,
+                ..
+            } => {
                 let type_str = self.format_type(field_type, schema)?;
                 Ok(UnionVariantTemplate::Newtype {
                     name: name.clone(),
                     type_str,
+                    doc,
                 })
             }
         }

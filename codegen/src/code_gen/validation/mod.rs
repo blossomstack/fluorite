@@ -206,8 +206,8 @@ impl Validator {
 
         for variant in &u.variants {
             match variant {
-                IRUnionVariant::Unit(_) => {}
-                IRUnionVariant::Newtype(_, field_type) => {
+                IRUnionVariant::Unit { .. } => {}
+                IRUnionVariant::Newtype { ty: field_type, .. } => {
                     if let Some(type_name) = self.get_custom_type_name(field_type) {
                         if !known_types.contains(&type_name) {
                             errors.push(ValidationError::UnknownType {
@@ -327,12 +327,12 @@ impl Validator {
             IRType::Union(u) => {
                 for variant in &u.variants {
                     match variant {
-                        IRUnionVariant::Newtype(_, field_type) => {
+                        IRUnionVariant::Newtype { ty: field_type, .. } => {
                             if let Some(name) = self.get_custom_type_name(field_type) {
                                 deps.push(name);
                             }
                         }
-                        IRUnionVariant::Unit(_) => {}
+                        IRUnionVariant::Unit { .. } => {}
                     }
                 }
             }

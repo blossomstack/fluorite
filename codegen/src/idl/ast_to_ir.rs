@@ -145,12 +145,16 @@ impl AstToIrConverter {
                 // Convert the inner type to IRFieldType
                 let ast_type = AstType::Named(inner_type.clone());
                 let field_type = self.convert_ast_type(&ast_type);
-                Ok(IRUnionVariant::Newtype(
-                    variant.name.value.clone(),
-                    field_type,
-                ))
+                Ok(IRUnionVariant::Newtype {
+                    name: variant.name.value.clone(),
+                    ty: field_type,
+                    doc: variant.doc.clone(),
+                })
             }
-            None => Ok(IRUnionVariant::Unit(variant.name.value.clone())),
+            None => Ok(IRUnionVariant::Unit {
+                name: variant.name.value.clone(),
+                doc: variant.doc.clone(),
+            }),
         }
     }
 
@@ -371,11 +375,11 @@ mod tests {
 
                 // Check variant types
                 match &u.variants[0] {
-                    IRUnionVariant::Newtype(name, _) => assert_eq!(name, "UserCreated"),
+                    IRUnionVariant::Newtype { name, .. } => assert_eq!(name, "UserCreated"),
                     _ => panic!("Expected Newtype variant"),
                 }
                 match &u.variants[2] {
-                    IRUnionVariant::Unit(name) => assert_eq!(name, "Deleted"),
+                    IRUnionVariant::Unit { name, .. } => assert_eq!(name, "Deleted"),
                     _ => panic!("Expected Unit variant"),
                 }
             }
@@ -404,7 +408,11 @@ mod tests {
                 assert_eq!(u.variants.len(), 3);
 
                 match &u.variants[0] {
-                    IRUnionVariant::Newtype(name, field_type) => {
+                    IRUnionVariant::Newtype {
+                        name,
+                        ty: field_type,
+                        ..
+                    } => {
                         assert_eq!(name, "Text");
                         assert!(matches!(
                             field_type,
@@ -414,7 +422,11 @@ mod tests {
                     _ => panic!("Expected Newtype variant"),
                 }
                 match &u.variants[1] {
-                    IRUnionVariant::Newtype(name, field_type) => {
+                    IRUnionVariant::Newtype {
+                        name,
+                        ty: field_type,
+                        ..
+                    } => {
                         assert_eq!(name, "Count");
                         assert!(matches!(
                             field_type,

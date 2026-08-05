@@ -155,17 +155,28 @@ pub struct IRUnion {
 #[derive(Debug, Clone)]
 pub enum IRUnionVariant {
     /// Simple variant with no data (unit variant): `{ type: "Deleted" }`
-    Unit(String),
+    Unit { name: String, doc: Option<String> },
     /// Variant with data: `{ type: "Created", value: ... }`
-    /// (name, type_ref) where type_ref is the type being wrapped
-    Newtype(String, IRFieldType),
+    /// `ty` is the type being wrapped
+    Newtype {
+        name: String,
+        ty: IRFieldType,
+        doc: Option<String>,
+    },
 }
 
 impl IRUnionVariant {
     pub fn name(&self) -> &str {
         match self {
-            IRUnionVariant::Unit(n) => n,
-            IRUnionVariant::Newtype(n, _) => n,
+            IRUnionVariant::Unit { name, .. } => name,
+            IRUnionVariant::Newtype { name, .. } => name,
+        }
+    }
+
+    pub fn doc(&self) -> Option<&str> {
+        match self {
+            IRUnionVariant::Unit { doc, .. } => doc.as_deref(),
+            IRUnionVariant::Newtype { doc, .. } => doc.as_deref(),
         }
     }
 }

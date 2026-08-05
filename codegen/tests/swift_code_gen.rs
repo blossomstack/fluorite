@@ -422,11 +422,15 @@ fn create_test_schema() -> IRSchema {
                 tag_field: "type".to_string(),
                 content_field: "value".to_string(),
                 variants: vec![
-                    IRUnionVariant::Unit("Empty".to_string()),
-                    IRUnionVariant::Newtype(
-                        "PostCode".to_string(),
-                        IRFieldType::Custom("PostCodeData".to_string()),
-                    ),
+                    IRUnionVariant::Unit {
+                        name: "Empty".to_string(),
+                        doc: None,
+                    },
+                    IRUnionVariant::Newtype {
+                        name: "PostCode".to_string(),
+                        ty: IRFieldType::Custom("PostCodeData".to_string()),
+                        doc: None,
+                    },
                 ],
                 doc: None,
             }),

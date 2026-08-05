@@ -66,9 +66,13 @@ pub struct EnumTemplate {
 #[derive(Clone)]
 pub enum UnionVariantTemplate {
     /// Unit variant: no data
-    Unit(String),
+    Unit { name: String, doc: String },
     /// Newtype variant: wraps a value
-    Newtype { name: String, type_str: String },
+    Newtype {
+        name: String,
+        type_str: String,
+        doc: String,
+    },
 }
 
 /// Template for rendering a union (adjacently tagged enum)

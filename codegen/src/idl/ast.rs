@@ -109,6 +109,7 @@ pub struct AstUnion {
 pub struct AstUnionVariant {
     pub name: Spanned<String>,
     pub inner_type: Option<Spanned<String>>,
+    pub doc: Option<String>,
     pub span: Span,
 }
 

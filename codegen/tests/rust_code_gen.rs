@@ -360,16 +360,20 @@ mod ir_union_variant_tests {
 
     #[test]
     fn test_unit_variant_name() {
-        let variant = IRUnionVariant::Unit("Empty".to_string());
+        let variant = IRUnionVariant::Unit {
+            name: "Empty".to_string(),
+            doc: None,
+        };
         assert_eq!(variant.name(), "Empty");
     }
 
     #[test]
     fn test_newtype_variant_name() {
-        let variant = IRUnionVariant::Newtype(
-            "Info".to_string(),
-            IRFieldType::Custom("AddressInfo".to_string()),
-        );
+        let variant = IRUnionVariant::Newtype {
+            name: "Info".to_string(),
+            ty: IRFieldType::Custom("AddressInfo".to_string()),
+            doc: None,
+        };
         assert_eq!(variant.name(), "Info");
     }
 }
@@ -547,10 +551,11 @@ mod validator_tests {
                 name: "TestUnion".to_string(),
                 tag_field: "type".to_string(),
                 content_field: "value".to_string(),
-                variants: vec![IRUnionVariant::Newtype(
-                    "Var".to_string(),
-                    IRFieldType::Custom("NonExistent".to_string()),
-                )],
+                variants: vec![IRUnionVariant::Newtype {
+                    name: "Var".to_string(),
+                    ty: IRFieldType::Custom("NonExistent".to_string()),
+                    doc: None,
+                }],
                 doc: None,
             })],
         )]);
@@ -726,8 +731,14 @@ mod validator_tests {
                 tag_field: "type".to_string(),
                 content_field: "value".to_string(),
                 variants: vec![
-                    IRUnionVariant::Unit("UnitA".to_string()),
-                    IRUnionVariant::Unit("UnitB".to_string()),
+                    IRUnionVariant::Unit {
+                        name: "UnitA".to_string(),
+                        doc: None,
+                    },
+                    IRUnionVariant::Unit {
+                        name: "UnitB".to_string(),
+                        doc: None,
+                    },
                 ],
                 doc: None,
             })],
@@ -1362,15 +1373,20 @@ fn create_test_schema() -> IRSchema {
                 tag_field: "type".to_string(),
                 content_field: "value".to_string(),
                 variants: vec![
-                    IRUnionVariant::Unit("Empty".to_string()),
-                    IRUnionVariant::Newtype(
-                        "PostCode".to_string(),
-                        IRFieldType::Custom("PostCodeData".to_string()),
-                    ),
-                    IRUnionVariant::Newtype(
-                        "AddressInfo".to_string(),
-                        IRFieldType::Custom("AddressInfoData".to_string()),
-                    ),
+                    IRUnionVariant::Unit {
+                        name: "Empty".to_string(),
+                        doc: None,
+                    },
+                    IRUnionVariant::Newtype {
+                        name: "PostCode".to_string(),
+                        ty: IRFieldType::Custom("PostCodeData".to_string()),
+                        doc: None,
+                    },
+                    IRUnionVariant::Newtype {
+                        name: "AddressInfo".to_string(),
+                        ty: IRFieldType::Custom("AddressInfoData".to_string()),
+                        doc: None,
+                    },
                 ],
                 doc: None,
             }),

@@ -6,15 +6,21 @@ import { {{ import.name }} } from '{{ import.path }}';
 {%- endif %}
 {%- if doc != "" %}
 /**
- * {{ doc }}
+ * {{ doc|safe }}
  */
 {%- endif %}
 export type {{ name }} =
 {%- for variant in variants %}
 {%- match variant %}
-{%- when TsUnionVariantTemplate::Unit with (name) %}
+{%- when TsUnionVariantTemplate::Unit with { name, doc } %}
+{%- if doc != "" %}
+  /** {{ doc|safe }} */
+{%- endif %}
   | { {{ tag_field }}: "{{ name }}" }
-{%- when TsUnionVariantTemplate::Newtype with { name, type_str } %}
+{%- when TsUnionVariantTemplate::Newtype with { name, type_str, doc } %}
+{%- if doc != "" %}
+  /** {{ doc|safe }} */
+{%- endif %}
   | { {{ tag_field }}: "{{ name }}"; {{ content_field }}: {{ type_str|safe }} }
 {%- endmatch %}
 {%- endfor %};

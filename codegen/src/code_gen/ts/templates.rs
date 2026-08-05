@@ -45,9 +45,13 @@ pub struct TsEnumTemplate {
 #[derive(Clone)]
 pub enum TsUnionVariantTemplate {
     /// Unit variant: `{ type: "Deleted" }`
-    Unit(String),
+    Unit { name: String, doc: String },
     /// Newtype variant: `{ type: "Created", value: ... }`
-    Newtype { name: String, type_str: String },
+    Newtype {
+        name: String,
+        type_str: String,
+        doc: String,
+    },
 }
 
 /// Template for rendering a TypeScript discriminated union (adjacently tagged)

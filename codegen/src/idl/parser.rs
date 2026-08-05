@@ -5,6 +5,7 @@
 #![allow(clippy::result_large_err)]
 
 use chumsky::prelude::*;
+use chumsky::Stream;
 use logos::Logos;
 
 use crate::idl::ast::{
@@ -18,15 +19,37 @@ pub type ParseError = Simple<Token, Span>;
 
 /// Parse a complete .fl file from source string
 pub fn parse_file(source: &str) -> Result<AstFile, Vec<ParseError>> {
-    let tokens = tokenize(source);
-    file_parser().parse(tokens.as_slice())
+    let tokens = tokenize(source)?;
+    let eoi = source.len()..source.len();
+    file_parser().parse(Stream::from_iter(eoi, tokens.into_iter()))
 }
 
-/// Tokenize source string into tokens (spans handled by chumsky)
-fn tokenize(source: &str) -> Vec<Token> {
-    Token::lexer(source)
-        .filter_map(|result| result.ok())
-        .collect()
+/// Tokenize source string, keeping each token's byte span.
+///
+/// The span matters: parsing a bare token slice makes chumsky number positions
+/// by token index, so a reported span like `19..20` looks like a byte offset but
+/// points somewhere unrelated in the file. Carrying the lexer's real spans
+/// through means error positions map back to actual source offsets.
+///
+/// Input the lexer cannot recognise is an error rather than something to skip —
+/// dropping it silently would let a stray character vanish and surface later as
+/// a confusing structural parse failure.
+fn tokenize(source: &str) -> Result<Vec<(Token, Span)>, Vec<ParseError>> {
+    let mut tokens = Vec::new();
+    let mut errors = Vec::new();
+
+    for (result, span) in Token::lexer(source).spanned() {
+        match result {
+            Ok(token) => tokens.push((token, span)),
+            Err(()) => errors.push(Simple::custom(span, "unrecognized input")),
+        }
+    }
+
+    if errors.is_empty() {
+        Ok(tokens)
+    } else {
+        Err(errors)
+    }
 }
 
 /// Parser for a complete file
@@ -255,18 +278,23 @@ fn union_body() -> impl Parser<Token, Vec<AstUnionVariant>, Error = ParseError> 
         .then_ignore(just(Token::RBrace))
 }
 
-/// Parser for union variant: `Variant` or `Variant(Type)`
+/// Parser for union variant: `Variant` or `Variant(Type)`, optionally preceded
+/// by a doc comment (as on enum variants and struct fields).
 fn union_variant() -> impl Parser<Token, AstUnionVariant, Error = ParseError> {
-    ident()
+    doc_comment()
+        .repeated()
+        .map(|docs| docs.into_iter().next())
+        .then(ident())
         .then(
             just(Token::LParen)
                 .ignore_then(ident())
                 .then_ignore(just(Token::RParen))
                 .or_not(),
         )
-        .map_with_span(|(name, inner_type), span| AstUnionVariant {
+        .map_with_span(|((doc, name), inner_type), span| AstUnionVariant {
             name,
             inner_type,
+            doc,
             span,
         })
 }

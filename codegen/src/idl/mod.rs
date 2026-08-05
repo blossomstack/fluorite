@@ -54,7 +54,86 @@ use self::ast_to_ir::AstToIrConverter;
 /// let ast = parse_string(source).unwrap();
 /// ```
 pub fn parse_string(source: &str) -> Result<AstFile> {
-    parser::parse_file(source).map_err(|errors| anyhow!("Parse errors: {:?}", errors))
+    parser::parse_file(source).map_err(|errors| anyhow!(render_parse_errors(None, source, &errors)))
+}
+
+/// Convert a byte offset into 1-based line and column numbers.
+fn line_col(source: &str, offset: usize) -> (usize, usize) {
+    // Clamp to a char boundary so a span into the middle of a multi-byte
+    // character can't panic the slicing below.
+    let mut offset = offset.min(source.len());
+    while offset > 0 && !source.is_char_boundary(offset) {
+        offset -= 1;
+    }
+
+    let before = &source[..offset];
+    let line = before.matches('\n').count() + 1;
+    let col = match before.rfind('\n') {
+        Some(nl) => offset - nl,
+        None => offset + 1,
+    };
+    (line, col)
+}
+
+/// Render parse errors with real source positions.
+///
+/// Spans are byte offsets into `source`, so they are reported as `line:column`
+/// rather than raw offsets — a raw `19..20` reads like something a caller can
+/// locate but tells them nothing without counting bytes by hand.
+fn render_parse_errors(path: Option<&Path>, source: &str, errors: &[parser::ParseError]) -> String {
+    use chumsky::error::SimpleReason;
+    use std::fmt::Write;
+
+    let origin = match path {
+        Some(p) => p.display().to_string(),
+        None => "<input>".to_owned(),
+    };
+
+    let mut out = format!("failed to parse {origin}");
+    for error in errors {
+        let (line, col) = line_col(source, error.span().start);
+        let _ = write!(out, "\n  {origin}:{line}:{col}: ");
+
+        match error.reason() {
+            SimpleReason::Custom(message) => {
+                let _ = write!(out, "{message}");
+            }
+            SimpleReason::Unclosed { span, delimiter } => {
+                let (open_line, open_col) = line_col(source, span.start);
+                let _ = write!(
+                    out,
+                    "unclosed {delimiter:?} opened at {open_line}:{open_col}"
+                );
+            }
+            SimpleReason::Unexpected => {
+                match error.found() {
+                    Some(token) => {
+                        let _ = write!(out, "unexpected {token:?}");
+                    }
+                    None => {
+                        let _ = write!(out, "unexpected end of input");
+                    }
+                }
+
+                // The expected set can run to every type keyword in the
+                // language, which buries the useful part. Show a few.
+                let mut expected: Vec<String> = error
+                    .expected()
+                    .flatten()
+                    .map(|token| format!("{token:?}"))
+                    .collect();
+                expected.sort();
+                if !expected.is_empty() {
+                    let shown = expected.len().min(5);
+                    let _ = write!(out, ", expected {}", expected[..shown].join(" | "));
+                    if expected.len() > shown {
+                        let _ = write!(out, " (and {} more)", expected.len() - shown);
+                    }
+                }
+            }
+        }
+    }
+    out
 }
 
 /// Parse a single .fl file from disk
@@ -68,14 +147,17 @@ pub fn parse_string(source: &str) -> Result<AstFile> {
 /// // let ast = parse_file(Path::new("examples/users.fl")).unwrap();
 /// ```
 pub fn parse_file<P: AsRef<Path>>(path: P) -> Result<AstFile> {
+    let path = path.as_ref();
     let source = std::fs::read_to_string(path)?;
-    parse_string(&source)
+    parser::parse_file(&source)
+        .map_err(|errors| anyhow!(render_parse_errors(Some(path), &source, &errors)))
 }
 
 /// Parse multiple .fl files from disk
 ///
-/// Returns a vector of AST files, one for each successfully parsed file.
-/// Files that fail to parse are skipped and errors are logged.
+/// Returns a vector of AST files, one per input. Any file that fails to parse
+/// fails the whole call: a skipped file silently drops its package from the
+/// output, which downstream reads as a missing type rather than a bad schema.
 ///
 /// # Example
 ///
@@ -89,16 +171,7 @@ pub fn parse_file<P: AsRef<Path>>(path: P) -> Result<AstFile> {
 /// // ]).unwrap();
 /// ```
 pub fn parse_files<P: AsRef<Path>>(paths: &[P]) -> Result<Vec<AstFile>> {
-    let mut files = Vec::new();
-    for path in paths {
-        match parse_file(path) {
-            Ok(ast) => files.push(ast),
-            Err(e) => {
-                eprintln!("Warning: Failed to parse {:?}: {}", path.as_ref(), e);
-            }
-        }
-    }
-    Ok(files)
+    paths.iter().map(parse_file).collect()
 }
 
 /// Parse .fl files and convert to IR schema for code generation
