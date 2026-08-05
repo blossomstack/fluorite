@@ -1,11 +1,11 @@
-# @zhxiaogg/fluorite-cli
+# @blossomstack/fluorite-cli
 
 Generate Rust and TypeScript code from Fluorite IDL (`.fl`) schema definitions.
 
 ## Installation
 
 ```bash
-npm install -D @zhxiaogg/fluorite-cli
+npm install -D @blossomstack/fluorite-cli
 ```
 
 ## Usage
@@ -57,7 +57,7 @@ npx fluorite rust --inputs ./schemas/*.fl --output ./src/generated
     "build": "npm run generate && tsc"
   },
   "devDependencies": {
-    "@zhxiaogg/fluorite-cli": "^0.2.0"
+    "@blossomstack/fluorite-cli": "^0.2.0"
   }
 }
 ```

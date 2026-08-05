@@ -59,7 +59,7 @@ publish-crates:
 
 # Publish npm package (requires binaries to be available in GitHub releases)
 publish-npm:
-	@echo "Publishing @zhxiaogg/fluorite-cli to npm..."
+	@echo "Publishing @blossomstack/fluorite-cli to npm..."
 	cd npm/fluorite-cli && npm publish --access public
 
 # Bump minor version in Cargo.toml and sync to npm packages
