@@ -81,7 +81,7 @@ fn line_col(source: &str, offset: usize) -> (usize, usize) {
 /// rather than raw offsets — a raw `19..20` reads like something a caller can
 /// locate but tells them nothing without counting bytes by hand.
 fn render_parse_errors(path: Option<&Path>, source: &str, errors: &[parser::ParseError]) -> String {
-    use chumsky::error::SimpleReason;
+    use chumsky::error::{RichPattern, RichReason};
     use std::fmt::Write;
 
     let origin = match path {
@@ -95,20 +95,13 @@ fn render_parse_errors(path: Option<&Path>, source: &str, errors: &[parser::Pars
         let _ = write!(out, "\n  {origin}:{line}:{col}: ");
 
         match error.reason() {
-            SimpleReason::Custom(message) => {
+            RichReason::Custom(message) => {
                 let _ = write!(out, "{message}");
             }
-            SimpleReason::Unclosed { span, delimiter } => {
-                let (open_line, open_col) = line_col(source, span.start);
-                let _ = write!(
-                    out,
-                    "unclosed {delimiter:?} opened at {open_line}:{open_col}"
-                );
-            }
-            SimpleReason::Unexpected => {
-                match error.found() {
+            RichReason::ExpectedFound { found, .. } => {
+                match found {
                     Some(token) => {
-                        let _ = write!(out, "unexpected {token:?}");
+                        let _ = write!(out, "unexpected {:?}", &**token);
                     }
                     None => {
                         let _ = write!(out, "unexpected end of input");
@@ -119,8 +112,16 @@ fn render_parse_errors(path: Option<&Path>, source: &str, errors: &[parser::Pars
                 // language, which buries the useful part. Show a few.
                 let mut expected: Vec<String> = error
                     .expected()
-                    .flatten()
-                    .map(|token| format!("{token:?}"))
+                    .map(|pattern| match pattern {
+                        RichPattern::Token(token) => format!("{:?}", &**token),
+                        RichPattern::Label(label) => label.to_string(),
+                        RichPattern::Identifier(name) => name.clone(),
+                        RichPattern::EndOfInput => "end of input".to_owned(),
+                        RichPattern::Any => "any token".to_owned(),
+                        RichPattern::SomethingElse => "something else".to_owned(),
+                        // `RichPattern` is `#[non_exhaustive]`.
+                        _ => "something else".to_owned(),
+                    })
                     .collect();
                 expected.sort();
                 if !expected.is_empty() {
