@@ -62,6 +62,12 @@ fn source_with_docs() -> String {
     )
 }
 
+/// Strip `\r` so assertions about comment layout read the same everywhere.
+/// Windows checks the templates out with CRLF, so askama emits CRLF there.
+fn lf(content: &[u8]) -> String {
+    String::from_utf8_lossy(content).replace('\r', "")
+}
+
 /// Generate all three languages from one source, returning `(label:path, content)`.
 fn generated_files(source: &str) -> anyhow::Result<Vec<(String, String)>> {
     let schema = parse_string_to_ir(source)?;
@@ -81,10 +87,7 @@ fn generated_files(source: &str) -> anyhow::Result<Vec<(String, String)>> {
 
     for (label, fs) in [("ts", ts), ("rust", rust), ("swift", swift)] {
         for (path, bytes) in fs.files() {
-            out.push((
-                format!("{label}:{path}"),
-                String::from_utf8_lossy(&bytes).into_owned(),
-            ));
+            out.push((format!("{label}:{path}"), lf(&bytes)));
         }
     }
 
@@ -282,7 +285,7 @@ fn rust_documents_enums_unions_and_aliases() -> anyhow::Result<()> {
     let rust = fs
         .files()
         .values()
-        .map(|bytes| String::from_utf8_lossy(bytes).into_owned())
+        .map(|bytes| lf(bytes))
         .collect::<Vec<_>>()
         .join("\n");
 
