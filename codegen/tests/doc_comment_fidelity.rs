@@ -339,6 +339,86 @@ fn a_blank_doc_line_carries_no_trailing_whitespace() -> anyhow::Result<()> {
     Ok(())
 }
 
+/// A field can be deprecated without being documented. The TypeScript template
+/// opens its JSDoc block on `!doc.is_empty() || deprecated`, so an empty doc
+/// must not take `@deprecated` down with it.
+#[test]
+fn deprecated_without_a_doc_still_gets_a_jsdoc_block() -> anyhow::Result<()> {
+    let source = r#"
+        package dep;
+
+        struct S {
+            #[deprecated]
+            bare: String,
+            /// Has a doc.
+            #[deprecated]
+            documented: String,
+        }
+    "#;
+
+    let files = generated_files(source)?;
+    let ts = files
+        .iter()
+        .filter(|(path, _)| path.starts_with("ts:"))
+        .map(|(_, content)| content.as_str())
+        .collect::<Vec<_>>()
+        .join("\n");
+
+    assert!(ts.contains("  /**\n   * @deprecated\n   */\n  bare: string;"));
+    assert!(ts.contains("  /**\n   * Has a doc.\n   * @deprecated\n   */\n  documented: string;"));
+
+    Ok(())
+}
+
+/// The templates loop over a doc's lines rather than testing a string for
+/// emptiness, so an undocumented schema must produce no comment markers and no
+/// stray blank lines where a comment would have gone.
+#[test]
+fn an_undocumented_schema_gets_no_comments() -> anyhow::Result<()> {
+    let source = r#"
+        package bare;
+
+        struct S {
+            a: u32,
+            b: String,
+        }
+
+        enum E {
+            One,
+            Two,
+        }
+
+        #[type_tag = "t"]
+        union U {
+            Ran(S),
+            Stopped,
+        }
+
+        type L = Vec<S>;
+    "#;
+
+    for (path, content) in generated_files(source)? {
+        // The Swift barrel file is prose by design; every other file is code.
+        if path.ends_with("bare.swift") {
+            continue;
+        }
+        // `/**` covers JSDoc; a lone ` * ` would also match `export * from`.
+        for marker in ["///", "/**"] {
+            assert!(
+                !content.contains(marker),
+                "{path} emitted the comment marker {marker:?} for an undocumented \
+                 schema:\n{content}"
+            );
+        }
+        assert!(
+            !content.contains("\n\n\n"),
+            "{path} left a blank run where a doc comment would have gone:\n{content}"
+        );
+    }
+
+    Ok(())
+}
+
 /// #9 — a file that fails to parse must surface as an error. It used to be
 /// logged as a warning while the caller carried on and reported success, so a
 /// malformed schema silently produced no output for its package.
