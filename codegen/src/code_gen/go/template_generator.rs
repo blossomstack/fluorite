@@ -27,6 +27,20 @@ fn go_doc_lines(doc: Option<&str>) -> Vec<String> {
     doc_lines(doc, "//")
 }
 
+/// Force LF line endings on rendered template output.
+///
+/// Askama embeds the `.j2` files as they sit on disk, and a Windows checkout
+/// converts them to CRLF. Generated Go has to be byte-identical to gofmt
+/// output, which is always LF, so normalising here keeps the same schema
+/// producing the same bytes on every platform.
+fn to_lf(rendered: String) -> String {
+    if rendered.contains('\r') {
+        rendered.replace("\r\n", "\n").replace('\r', "\n")
+    } else {
+        rendered
+    }
+}
+
 /// Template-based Go code generator.
 pub struct GoTemplateGenerator {
     options: GoOptions,
@@ -66,11 +80,13 @@ impl GoTemplateGenerator {
         // file's final newline are added here.
         if self.options.single_file {
             let needs_json = types.iter().any(|t| matches!(t, IRType::Union(_)));
-            let mut content = GoFileHeaderTemplate {
-                package_name,
-                needs_json_import: needs_json,
-            }
-            .render()?;
+            let mut content = to_lf(
+                GoFileHeaderTemplate {
+                    package_name,
+                    needs_json_import: needs_json,
+                }
+                .render()?,
+            );
             for ir_type in &types {
                 content.push_str("\n\n");
                 content.push_str(&self.render_type(ir_type, schema)?);
@@ -81,11 +97,13 @@ impl GoTemplateGenerator {
         } else {
             for ir_type in &types {
                 let needs_json = matches!(ir_type, IRType::Union(_));
-                let mut content = GoFileHeaderTemplate {
-                    package_name: package_name.clone(),
-                    needs_json_import: needs_json,
-                }
-                .render()?;
+                let mut content = to_lf(
+                    GoFileHeaderTemplate {
+                        package_name: package_name.clone(),
+                        needs_json_import: needs_json,
+                    }
+                    .render()?,
+                );
                 content.push_str("\n\n");
                 content.push_str(&self.render_type(ir_type, schema)?);
                 content.push('\n');
@@ -251,7 +269,7 @@ impl GoTemplateGenerator {
             doc: go_doc_lines(s.doc.as_deref()),
             field_lines: Self::aligned_block(entries),
         };
-        Ok(template.render()?)
+        Ok(to_lf(template.render()?))
     }
 
     /// The wire name, following the Rust backend: an explicit rename wins
@@ -301,7 +319,7 @@ impl GoTemplateGenerator {
             doc: go_doc_lines(e.doc.as_deref()),
             constant_lines: Self::aligned_block(entries),
         };
-        Ok(template.render()?)
+        Ok(to_lf(template.render()?))
     }
 
     fn render_type_alias(&self, a: &IRTypeAlias, schema: &IRSchema) -> Result<String> {
@@ -321,7 +339,7 @@ impl GoTemplateGenerator {
             doc: go_doc_lines(a.doc.as_deref()),
             target_type,
         };
-        Ok(template.render()?)
+        Ok(to_lf(template.render()?))
     }
 
     fn render_union(&self, u: &IRUnion, schema: &IRSchema) -> Result<String> {
@@ -384,7 +402,7 @@ impl GoTemplateGenerator {
             tag_go_name: "Type".to_string(),
             content_go_name: "Value".to_string(),
         };
-        Ok(template.render()?)
+        Ok(to_lf(template.render()?))
     }
 
     #[allow(clippy::only_used_in_recursion)]
@@ -483,5 +501,21 @@ impl GoTemplateGenerator {
             .collect();
 
         anyhow!("Validation errors:\n  - {}", messages.join("\n  - "))
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::to_lf;
+
+    #[test]
+    fn crlf_templates_still_produce_lf_output() {
+        assert_eq!(to_lf("a\r\nb\r\n".to_string()), "a\nb\n");
+        assert_eq!(to_lf("a\rb".to_string()), "a\nb");
+    }
+
+    #[test]
+    fn lf_output_is_left_alone() {
+        assert_eq!(to_lf("a\nb\n".to_string()), "a\nb\n");
     }
 }
