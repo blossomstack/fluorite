@@ -15,8 +15,8 @@ use crate::code_gen::utils::to_snake_case;
 use crate::code_gen::validation::{ValidationError, Validator};
 
 use super::templates::{
-    EnumTemplate, FieldTemplate, ListAliasTemplate, MapAliasTemplate, ModTemplate, ModuleEntry,
-    StructTemplate, UnionTemplate, UnionVariantTemplate,
+    EnumTemplate, EnumVariantTemplate, FieldTemplate, ListAliasTemplate, MapAliasTemplate,
+    ModTemplate, ModuleEntry, StructTemplate, UnionTemplate, UnionVariantTemplate,
 };
 use super::RustOptions;
 
@@ -125,7 +125,14 @@ impl RustTemplateGenerator {
         let template = EnumTemplate {
             derives: self.options.get_derives_string(),
             name: e.name.clone(),
-            variants: e.variants.clone(),
+            variants: e
+                .variants
+                .iter()
+                .map(|v| EnumVariantTemplate {
+                    name: v.name.clone(),
+                    doc: slash_doc_lines(v.doc.as_deref()),
+                })
+                .collect(),
             doc: slash_doc_lines(e.doc.as_deref()),
         };
 

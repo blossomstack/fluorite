@@ -25,6 +25,8 @@ pub struct SwiftEnumVariant {
     pub code_name: String,
     pub original_name: String,
     pub needs_rename: bool,
+    /// Documentation comment for this variant
+    pub doc: Vec<String>,
 }
 
 /// Template for rendering a Swift struct

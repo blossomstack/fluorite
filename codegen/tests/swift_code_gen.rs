@@ -4,8 +4,8 @@ use std::sync::Arc;
 use fluorite_codegen::code_gen::{
     fs::MemoryFileSystem,
     ir::{
-        IREnum, IRField, IRFieldType, IRPackage, IRPrimitive, IRSchema, IRStruct, IRType,
-        IRTypeAlias, IRTypeAliasTarget, IRUnion, IRUnionVariant,
+        IREnum, IREnumVariant, IRField, IRFieldType, IRPackage, IRPrimitive, IRSchema, IRStruct,
+        IRType, IRTypeAlias, IRTypeAliasTarget, IRUnion, IRUnionVariant,
     },
     swift::{SwiftOptions, SwiftTemplateGenerator, SwiftVisibility},
 };
@@ -388,7 +388,7 @@ fn create_test_schema() -> IRSchema {
             }),
             IRType::Enum(IREnum {
                 name: "Gender".to_string(),
-                variants: vec!["Male".to_string(), "Female".to_string()],
+                variants: vec![IREnumVariant::new("Male"), IREnumVariant::new("Female")],
                 doc: None,
             }),
         ],

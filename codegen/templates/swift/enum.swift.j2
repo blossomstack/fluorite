@@ -3,6 +3,9 @@
 {%- endfor %}
 {{ visibility }} enum {{ name }}: String, Codable, Equatable, Sendable {
 {%- for variant in variants %}
+{%- for line in variant.doc %}
+    {{ line }}
+{%- endfor %}
     case {{ variant.code_name }}{% if variant.needs_rename %} = "{{ variant.original_name }}"{% endif %}
 
 {%- endfor %}

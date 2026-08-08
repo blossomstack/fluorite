@@ -36,8 +36,16 @@ pub struct InterfaceTemplate {
 #[template(path = "ts/enum.ts.j2")]
 pub struct TsEnumTemplate {
     pub name: String,
-    pub variants: Vec<String>,
+    pub variants: Vec<TsEnumVariantTemplate>,
     /// Documentation comment for this enum
+    pub doc: Vec<String>,
+}
+
+/// One enum variant for TypeScript templates
+#[derive(Clone)]
+pub struct TsEnumVariantTemplate {
+    pub name: String,
+    /// Documentation comment for this variant
     pub doc: Vec<String>,
 }
 

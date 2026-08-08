@@ -59,8 +59,16 @@ impl FieldTemplate {
 pub struct EnumTemplate {
     pub derives: String,
     pub name: String,
-    pub variants: Vec<String>,
+    pub variants: Vec<EnumVariantTemplate>,
     /// Documentation comment for this enum
+    pub doc: Vec<String>,
+}
+
+/// One enum variant for templates
+#[derive(Clone)]
+pub struct EnumVariantTemplate {
+    pub name: String,
+    /// Documentation comment for this variant
     pub doc: Vec<String>,
 }
 

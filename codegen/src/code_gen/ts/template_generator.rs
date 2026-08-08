@@ -15,8 +15,8 @@ use crate::code_gen::utils::to_camel_case;
 use crate::code_gen::validation::{ValidationError, Validator};
 
 use super::templates::{
-    InterfaceTemplate, TsEnumTemplate, TsFieldTemplate, TsImport, TsIndexTemplate, TsModuleEntry,
-    TsTypeAliasTemplate, TsUnionTemplate, TsUnionVariantTemplate,
+    InterfaceTemplate, TsEnumTemplate, TsEnumVariantTemplate, TsFieldTemplate, TsImport,
+    TsIndexTemplate, TsModuleEntry, TsTypeAliasTemplate, TsUnionTemplate, TsUnionVariantTemplate,
 };
 use super::TypeScriptOptions;
 
@@ -154,7 +154,14 @@ impl TsTemplateGenerator {
     fn render_enum(&self, e: &crate::code_gen::ir::IREnum) -> Result<String> {
         let template = TsEnumTemplate {
             name: e.name.clone(),
-            variants: e.variants.clone(),
+            variants: e
+                .variants
+                .iter()
+                .map(|v| TsEnumVariantTemplate {
+                    name: v.name.clone(),
+                    doc: block_doc_lines(v.doc.as_deref()),
+                })
+                .collect(),
             doc: block_doc_lines(e.doc.as_deref()),
         };
 

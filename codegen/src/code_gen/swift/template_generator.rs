@@ -227,12 +227,13 @@ impl SwiftTemplateGenerator {
             .variants
             .iter()
             .map(|v| {
-                let code_name = to_camel_case(v);
-                let needs_rename = code_name != *v;
+                let code_name = to_camel_case(&v.name);
+                let needs_rename = code_name != v.name;
                 SwiftEnumVariant {
                     code_name,
-                    original_name: v.clone(),
+                    original_name: v.name.clone(),
                     needs_rename,
+                    doc: slash_doc_lines(v.doc.as_deref()),
                 }
             })
             .collect();

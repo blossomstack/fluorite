@@ -131,6 +131,10 @@ const MULTI_LINE_SOURCE: &str = r#"
     /// Alias line one.
     /// Alias line two.
     type Steps = Vec<Step>;
+
+    /// Map alias line one.
+    /// Map alias line two.
+    type StepsByName = Map<String, Step>;
 "#;
 
 /// Asserts that every one of `fragments` appears in some file of each language.
@@ -234,10 +238,18 @@ fn every_line_of_a_wrapped_doc_comment_survives() -> anyhow::Result<()> {
             "Struct line three.",
             "Field line one.",
             "Field line two.",
+            "Enum line one.",
+            "Enum line two.",
+            "Enum variant line one.",
+            "Enum variant line two.",
             "Union line one.",
             "Union line two.",
             "Union variant line one.",
             "Union variant line two.",
+            "Alias line one.",
+            "Alias line two.",
+            "Map alias line one.",
+            "Map alias line two.",
         ],
     );
 
