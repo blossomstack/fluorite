@@ -33,6 +33,17 @@ struct Cli {
 
 #[derive(Subcommand)]
 enum Commands {
+    /// Delete a generated output tree
+    ///
+    /// Generation overwrites files but never removes them, so a renamed or
+    /// moved type leaves its old file behind. Run this before a generate to
+    /// make the output tree a pure function of the schema.
+    Clean {
+        /// Output directory to delete, recursively
+        #[arg(short, long)]
+        output: String,
+    },
+
     /// Generate Rust code from .fl definitions
     Rust {
         /// Input .fl files or directories containing .fl files
@@ -123,6 +134,12 @@ fn main() -> anyhow::Result<()> {
     let cli = Cli::parse();
 
     match cli.command {
+        Commands::Clean { output } => {
+            let fs = RealFileSystem::new();
+            code_gen::clean::clean_output_dir(&fs, &output)?;
+            println!("Cleaned {output}");
+        }
+
         Commands::Rust {
             inputs,
             output,

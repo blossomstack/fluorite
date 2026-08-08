@@ -1,3 +1,4 @@
+pub mod clean;
 pub mod doc;
 pub mod fs;
 pub mod ir;
