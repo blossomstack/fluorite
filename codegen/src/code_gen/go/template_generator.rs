@@ -27,18 +27,21 @@ fn go_doc_lines(doc: Option<&str>) -> Vec<String> {
     doc_lines(doc, "//")
 }
 
-/// Force LF line endings on rendered template output.
+/// Normalise rendered template output: LF line endings, no trailing newline.
 ///
 /// Askama embeds the `.j2` files as they sit on disk, and a Windows checkout
-/// converts them to CRLF. Generated Go has to be byte-identical to gofmt
-/// output, which is always LF, so normalising here keeps the same schema
-/// producing the same bytes on every platform.
-fn to_lf(rendered: String) -> String {
-    if rendered.contains('\r') {
+/// converts them to CRLF. It also trims one trailing newline from the template
+/// source, which on CRLF leaves a stray `\r` behind — so the same template
+/// rendered on Linux and Windows differed by a newline. Stripping trailing
+/// newlines here means the caller decides the spacing between declarations and
+/// the same schema produces the same bytes on every platform.
+fn normalize(rendered: String) -> String {
+    let lf = if rendered.contains('\r') {
         rendered.replace("\r\n", "\n").replace('\r', "\n")
     } else {
         rendered
-    }
+    };
+    lf.trim_end_matches('\n').to_string()
 }
 
 /// Template-based Go code generator.
@@ -76,11 +79,11 @@ impl GoTemplateGenerator {
         self.fs.create_dir_all(&self.options.output_dir)?;
         let package_name = self.options.resolved_package_name();
 
-        // askama drops each template's trailing newline, so separators and the
-        // file's final newline are added here.
+        // `normalize` strips trailing newlines, so the separators between
+        // declarations and the file's final newline are added here.
         if self.options.single_file {
             let needs_json = types.iter().any(|t| matches!(t, IRType::Union(_)));
-            let mut content = to_lf(
+            let mut content = normalize(
                 GoFileHeaderTemplate {
                     package_name,
                     needs_json_import: needs_json,
@@ -97,7 +100,7 @@ impl GoTemplateGenerator {
         } else {
             for ir_type in &types {
                 let needs_json = matches!(ir_type, IRType::Union(_));
-                let mut content = to_lf(
+                let mut content = normalize(
                     GoFileHeaderTemplate {
                         package_name: package_name.clone(),
                         needs_json_import: needs_json,
@@ -269,7 +272,7 @@ impl GoTemplateGenerator {
             doc: go_doc_lines(s.doc.as_deref()),
             field_lines: Self::aligned_block(entries),
         };
-        Ok(to_lf(template.render()?))
+        Ok(normalize(template.render()?))
     }
 
     /// The wire name, following the Rust backend: an explicit rename wins
@@ -319,7 +322,7 @@ impl GoTemplateGenerator {
             doc: go_doc_lines(e.doc.as_deref()),
             constant_lines: Self::aligned_block(entries),
         };
-        Ok(to_lf(template.render()?))
+        Ok(normalize(template.render()?))
     }
 
     fn render_type_alias(&self, a: &IRTypeAlias, schema: &IRSchema) -> Result<String> {
@@ -339,7 +342,7 @@ impl GoTemplateGenerator {
             doc: go_doc_lines(a.doc.as_deref()),
             target_type,
         };
-        Ok(to_lf(template.render()?))
+        Ok(normalize(template.render()?))
     }
 
     fn render_union(&self, u: &IRUnion, schema: &IRSchema) -> Result<String> {
@@ -402,7 +405,7 @@ impl GoTemplateGenerator {
             tag_go_name: "Type".to_string(),
             content_go_name: "Value".to_string(),
         };
-        Ok(to_lf(template.render()?))
+        Ok(normalize(template.render()?))
     }
 
     #[allow(clippy::only_used_in_recursion)]
@@ -506,16 +509,19 @@ impl GoTemplateGenerator {
 
 #[cfg(test)]
 mod tests {
-    use super::to_lf;
+    use super::normalize;
 
     #[test]
     fn crlf_templates_still_produce_lf_output() {
-        assert_eq!(to_lf("a\r\nb\r\n".to_string()), "a\nb\n");
-        assert_eq!(to_lf("a\rb".to_string()), "a\nb");
+        assert_eq!(normalize("a\r\nb\r\nc".to_string()), "a\nb\nc");
+        assert_eq!(normalize("a\rb".to_string()), "a\nb");
     }
 
     #[test]
-    fn lf_output_is_left_alone() {
-        assert_eq!(to_lf("a\nb\n".to_string()), "a\nb\n");
+    fn trailing_newlines_are_stripped_on_every_platform() {
+        // The CRLF and LF forms of the same template must agree exactly.
+        assert_eq!(normalize("a\nb\n".to_string()), "a\nb");
+        assert_eq!(normalize("a\r\nb\r\n".to_string()), "a\nb");
+        assert_eq!(normalize("a\nb\n\n\n".to_string()), "a\nb");
     }
 }
