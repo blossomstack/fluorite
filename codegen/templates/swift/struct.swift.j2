@@ -5,14 +5,14 @@ import FluoriteRuntime
 import Foundation
 {%- endif %}
 
-{%- if doc != "" %}
-/// {{ doc|safe }}
-{%- endif %}
+{%- for line in doc %}
+{{ line }}
+{%- endfor %}
 {{ visibility }} struct {{ name }}: Codable, Equatable, Sendable {
 {%- for field in fields %}
-{%- if field.doc != "" %}
-    /// {{ field.doc|safe }}
-{%- endif %}
+{%- for line in field.doc %}
+    {{ line }}
+{%- endfor %}
 {%- if field.deprecated %}
     @available(*, deprecated)
 {%- endif %}

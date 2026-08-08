@@ -1,6 +1,6 @@
-{%- if doc != "" %}
-/// {{ doc }}
-{%- endif %}
+{%- for line in doc %}
+{{ line }}
+{%- endfor %}
 {{ derives }}
 #[serde(rename_all = "camelCase")]
 {%- if deny_unknown_fields %}
@@ -8,9 +8,9 @@
 {%- endif %}
 pub struct {{ name }} {
 {%- for field in fields %}
-{%- if field.doc != "" %}
-    /// {{ field.doc }}
-{%- endif %}
+{%- for line in field.doc %}
+    {{ line }}
+{%- endfor %}
 {%- if field.deprecated %}
     #[deprecated]
 {%- endif %}

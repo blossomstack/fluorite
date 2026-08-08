@@ -12,7 +12,7 @@ pub struct StructTemplate {
     /// Deny unknown fields during deserialization
     pub deny_unknown_fields: bool,
     /// Documentation comment for this struct
-    pub doc: String,
+    pub doc: Vec<String>,
 }
 
 /// Field information for templates
@@ -34,7 +34,7 @@ pub struct FieldTemplate {
     /// Flatten for serde(flatten)
     pub flatten: bool,
     /// Documentation comment for this field
-    pub doc: String,
+    pub doc: Vec<String>,
     /// Whether this field is deprecated
     pub deprecated: bool,
 }
@@ -60,18 +60,20 @@ pub struct EnumTemplate {
     pub derives: String,
     pub name: String,
     pub variants: Vec<String>,
+    /// Documentation comment for this enum
+    pub doc: Vec<String>,
 }
 
 /// Union variant types for template
 #[derive(Clone)]
 pub enum UnionVariantTemplate {
     /// Unit variant: no data
-    Unit { name: String, doc: String },
+    Unit { name: String, doc: Vec<String> },
     /// Newtype variant: wraps a value
     Newtype {
         name: String,
         type_str: String,
-        doc: String,
+        doc: Vec<String>,
     },
 }
 
@@ -86,6 +88,8 @@ pub struct UnionTemplate {
     /// Content field name (e.g., "value")
     pub content_field: String,
     pub variants: Vec<UnionVariantTemplate>,
+    /// Documentation comment for this union
+    pub doc: Vec<String>,
 }
 
 /// Template for rendering a list type alias
@@ -94,6 +98,8 @@ pub struct UnionTemplate {
 pub struct ListAliasTemplate {
     pub name: String,
     pub item_type: String,
+    /// Documentation comment for this type alias
+    pub doc: Vec<String>,
 }
 
 /// Template for rendering a map type alias
@@ -103,6 +109,8 @@ pub struct MapAliasTemplate {
     pub name: String,
     pub key_type: String,
     pub value_type: String,
+    /// Documentation comment for this type alias
+    pub doc: Vec<String>,
 }
 
 /// Template for rendering a module file

@@ -1,3 +1,6 @@
+{%- for line in doc %}
+{{ line }}
+{%- endfor %}
 {{ derives }}
 pub enum {{ name }} {
 {%- for variant in variants %}

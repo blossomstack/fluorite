@@ -1,6 +1,8 @@
-{%- if doc != "" %}
+{%- if !doc.is_empty() %}
 /**
- * {{ doc }}
+{%- for line in doc %}
+ {{ line }}
+{%- endfor %}
  */
 {%- endif %}
 export enum {{ name }} {

@@ -191,6 +191,8 @@ struct User {
 }
 ```
 
+Consecutive `///` lines form a single comment and are emitted one line per line, so a sentence that wraps in the schema stays intact in every generated language. The text is copied verbatim — nothing is escaped.
+
 ### Attributes
 
 | Attribute | Applies to | Effect |

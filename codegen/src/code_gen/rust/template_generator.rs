@@ -5,6 +5,7 @@ use std::sync::Arc;
 use anyhow::{anyhow, Result};
 use askama::Template;
 
+use crate::code_gen::doc::slash_doc_lines;
 use crate::code_gen::fs::FileSystem;
 use crate::code_gen::ir::{
     IRField, IRFieldType, IRPrimitive, IRSchema, IRStruct, IRType, IRTypeAlias, IRTypeAliasTarget,
@@ -114,7 +115,7 @@ impl RustTemplateGenerator {
             name: s.name.clone(),
             fields,
             deny_unknown_fields: s.deny_unknown_fields,
-            doc: s.doc.clone().unwrap_or_default(),
+            doc: slash_doc_lines(s.doc.as_deref()),
         };
 
         Ok(template.render()?)
@@ -125,6 +126,7 @@ impl RustTemplateGenerator {
             derives: self.options.get_derives_string(),
             name: e.name.clone(),
             variants: e.variants.clone(),
+            doc: slash_doc_lines(e.doc.as_deref()),
         };
 
         Ok(template.render()?)
@@ -143,6 +145,7 @@ impl RustTemplateGenerator {
             tag_field: u.tag_field.clone(),
             content_field: u.content_field.clone(),
             variants,
+            doc: slash_doc_lines(u.doc.as_deref()),
         };
 
         Ok(template.render()?)
@@ -154,6 +157,7 @@ impl RustTemplateGenerator {
                 let template = ListAliasTemplate {
                     name: a.name.clone(),
                     item_type: self.format_type(item_type, schema)?,
+                    doc: slash_doc_lines(a.doc.as_deref()),
                 };
                 Ok(template.render()?)
             }
@@ -162,6 +166,7 @@ impl RustTemplateGenerator {
                     name: a.name.clone(),
                     key_type: self.format_type(key_type, schema)?,
                     value_type: self.format_type(value_type, schema)?,
+                    doc: slash_doc_lines(a.doc.as_deref()),
                 };
                 Ok(template.render()?)
             }
@@ -189,7 +194,7 @@ impl RustTemplateGenerator {
             skip_if_none: field.skip_if_none,
             skip_if_default: field.skip_if_default,
             flatten: field.flatten,
-            doc: field.doc.clone().unwrap_or_default(),
+            doc: slash_doc_lines(field.doc.as_deref()),
             deprecated: field.deprecated,
         })
     }
@@ -199,7 +204,7 @@ impl RustTemplateGenerator {
         variant: &IRUnionVariant,
         schema: &IRSchema,
     ) -> Result<UnionVariantTemplate> {
-        let doc = variant.doc().unwrap_or_default().to_owned();
+        let doc = slash_doc_lines(variant.doc());
         match variant {
             IRUnionVariant::Unit { name, .. } => Ok(UnionVariantTemplate::Unit {
                 name: name.clone(),

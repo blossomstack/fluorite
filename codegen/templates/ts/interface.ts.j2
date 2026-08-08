@@ -4,18 +4,20 @@ import { {{ import.name }} } from '{{ import.path }}';
 {%- endfor %}
 
 {%- endif %}
-{%- if doc != "" %}
+{%- if !doc.is_empty() %}
 /**
- * {{ doc }}
+{%- for line in doc %}
+ {{ line }}
+{%- endfor %}
  */
 {%- endif %}
 export interface {{ name }} {
 {%- for field in fields %}
-{%- if field.doc != "" || field.deprecated %}
+{%- if !field.doc.is_empty() || field.deprecated %}
   /**
-{%- if field.doc != "" %}
-   * {{ field.doc }}
-{%- endif %}
+{%- for line in field.doc %}
+   {{ line }}
+{%- endfor %}
 {%- if field.deprecated %}
    * @deprecated
 {%- endif %}

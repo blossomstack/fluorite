@@ -1,3 +1,4 @@
+pub mod doc;
 pub mod fs;
 pub mod ir;
 pub mod rust;

@@ -100,9 +100,7 @@ fn item() -> impl Parser<Token, AstItem, Error = ParseError> {
 
 /// Parser for struct definition
 fn struct_def() -> impl Parser<Token, AstStruct, Error = ParseError> {
-    doc_comment()
-        .repeated()
-        .map(|docs| docs.into_iter().next())
+    doc_comments()
         .then(attributes())
         .then_ignore(just(Token::Struct))
         .then(ident())
@@ -125,9 +123,7 @@ fn struct_body() -> impl Parser<Token, Vec<AstField>, Error = ParseError> {
 
 /// Parser for a field
 fn field() -> impl Parser<Token, AstField, Error = ParseError> {
-    doc_comment()
-        .repeated()
-        .map(|docs| docs.into_iter().next())
+    doc_comments()
         .then(attributes())
         .then(ident())
         .then_ignore(just(Token::Colon))
@@ -207,9 +203,7 @@ fn ty() -> impl Parser<Token, AstType, Error = ParseError> {
 
 /// Parser for enum definition
 fn enum_def() -> impl Parser<Token, AstEnum, Error = ParseError> {
-    doc_comment()
-        .repeated()
-        .map(|docs| docs.into_iter().next())
+    doc_comments()
         .then(attributes())
         .then_ignore(just(Token::Enum))
         .then(ident())
@@ -236,9 +230,7 @@ fn enum_body() -> impl Parser<Token, Vec<AstEnumVariant>, Error = ParseError> {
 
 /// Parser for enum variant
 fn enum_variant() -> impl Parser<Token, AstEnumVariant, Error = ParseError> {
-    doc_comment()
-        .repeated()
-        .map(|docs| docs.into_iter().next())
+    doc_comments()
         .then(attributes())
         .then(ident())
         .map_with_span(|((doc, attrs), name), span| AstEnumVariant {
@@ -251,9 +243,7 @@ fn enum_variant() -> impl Parser<Token, AstEnumVariant, Error = ParseError> {
 
 /// Parser for union definition
 fn union_def() -> impl Parser<Token, AstUnion, Error = ParseError> {
-    doc_comment()
-        .repeated()
-        .map(|docs| docs.into_iter().next())
+    doc_comments()
         .then(attributes())
         .then_ignore(just(Token::Union))
         .then(ident())
@@ -281,9 +271,7 @@ fn union_body() -> impl Parser<Token, Vec<AstUnionVariant>, Error = ParseError> 
 /// Parser for union variant: `Variant` or `Variant(Type)`, optionally preceded
 /// by a doc comment (as on enum variants and struct fields).
 fn union_variant() -> impl Parser<Token, AstUnionVariant, Error = ParseError> {
-    doc_comment()
-        .repeated()
-        .map(|docs| docs.into_iter().next())
+    doc_comments()
         .then(ident())
         .then(
             just(Token::LParen)
@@ -301,9 +289,7 @@ fn union_variant() -> impl Parser<Token, AstUnionVariant, Error = ParseError> {
 
 /// Parser for type alias: `type Name = Target;`
 fn type_alias() -> impl Parser<Token, AstTypeAlias, Error = ParseError> {
-    doc_comment()
-        .repeated()
-        .map(|docs| docs.into_iter().next())
+    doc_comments()
         .then_ignore(just(Token::Type))
         .then(ident())
         .then_ignore(just(Token::Eq))
@@ -331,11 +317,27 @@ fn attribute() -> impl Parser<Token, AstAttribute, Error = ParseError> {
         .map_with_span(|(name, value), span| AstAttribute { name, value, span })
 }
 
-/// Parser for doc comment as string
+/// Parser for a single `///` line as a string
 fn doc_comment() -> impl Parser<Token, String, Error = ParseError> {
     select! {
         Token::DocComment(s) => s,
     }
+}
+
+/// Parser for a run of consecutive `///` lines, joined into one doc comment.
+///
+/// The lexer emits one token per `///` line, so a wrapped comment arrives here
+/// as several strings. They are joined with newlines and kept as written —
+/// keeping only the first would cut the prose wherever the author happened to
+/// wrap it.
+fn doc_comments() -> impl Parser<Token, Option<String>, Error = ParseError> {
+    doc_comment().repeated().map(|lines| {
+        if lines.is_empty() {
+            None
+        } else {
+            Some(lines.join("\n"))
+        }
+    })
 }
 
 /// Parser for identifier (including type keywords when used as names)
@@ -562,6 +564,100 @@ mod tests {
                 assert_eq!(s.fields[0].doc.as_ref().unwrap(), "The user's name");
             }
             _ => panic!("Expected struct"),
+        }
+    }
+
+    #[test]
+    fn test_parse_joins_consecutive_doc_comment_lines() {
+        let source = r#"
+            package test;
+            /// A user in the system. This sentence wraps across
+            /// three source lines, and every one of them
+            /// belongs to the comment.
+            struct User {
+                /// The user's name,
+                /// as they wrote it.
+                name: String,
+            }
+        "#;
+        let result = parse_file(source);
+        assert!(result.is_ok(), "{:?}", result.err());
+        let ast = result.unwrap();
+        match &ast.items[0] {
+            AstItem::Struct(s) => {
+                assert_eq!(
+                    s.doc.as_deref().unwrap(),
+                    "A user in the system. This sentence wraps across\n\
+                     three source lines, and every one of them\n\
+                     belongs to the comment."
+                );
+                assert_eq!(
+                    s.fields[0].doc.as_deref().unwrap(),
+                    "The user's name,\nas they wrote it."
+                );
+            }
+            _ => panic!("Expected struct"),
+        }
+    }
+
+    #[test]
+    fn test_parse_joins_doc_comment_lines_on_every_item_kind() {
+        let source = r#"
+            package test;
+            /// An enum.
+            /// Second line.
+            enum Status {
+                /// A variant.
+                /// Second line.
+                Active,
+            }
+            /// A union.
+            /// Second line.
+            union Event {
+                /// A union variant.
+                /// Second line.
+                Created,
+            }
+            /// An alias.
+            /// Second line.
+            type Statuses = Vec<Status>;
+        "#;
+        let result = parse_file(source);
+        assert!(result.is_ok(), "{:?}", result.err());
+        let ast = result.unwrap();
+
+        let docs: Vec<&str> = ast
+            .items
+            .iter()
+            .map(|item| match item {
+                AstItem::Struct(s) => s.doc.as_deref().unwrap(),
+                AstItem::Enum(e) => e.doc.as_deref().unwrap(),
+                AstItem::Union(u) => u.doc.as_deref().unwrap(),
+                AstItem::TypeAlias(a) => a.doc.as_deref().unwrap(),
+            })
+            .collect();
+        assert_eq!(
+            docs,
+            vec![
+                "An enum.\nSecond line.",
+                "A union.\nSecond line.",
+                "An alias.\nSecond line.",
+            ]
+        );
+
+        match &ast.items[0] {
+            AstItem::Enum(e) => assert_eq!(
+                e.variants[0].doc.as_deref().unwrap(),
+                "A variant.\nSecond line."
+            ),
+            _ => panic!("Expected enum"),
+        }
+        match &ast.items[1] {
+            AstItem::Union(u) => assert_eq!(
+                u.variants[0].doc.as_deref().unwrap(),
+                "A union variant.\nSecond line."
+            ),
+            _ => panic!("Expected union"),
         }
     }
 

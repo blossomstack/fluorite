@@ -4,9 +4,11 @@ import { {{ import.name }} } from '{{ import.path }}';
 {%- endfor %}
 
 {%- endif %}
-{%- if doc != "" %}
+{%- if !doc.is_empty() %}
 /**
- * {{ doc }}
+{%- for line in doc %}
+ {{ line }}
+{%- endfor %}
  */
 {%- endif %}
 export type {{ name }} = {{ target_type|safe }};

@@ -5,21 +5,21 @@ import FluoriteRuntime
 import Foundation
 {%- endif %}
 
-{%- if doc != "" %}
-/// {{ doc|safe }}
-{%- endif %}
+{%- for line in doc %}
+{{ line }}
+{%- endfor %}
 {{ visibility }} enum {{ name }}: Codable, Equatable, Sendable {
 {%- for variant in variants %}
 {%- match variant %}
 {%- when SwiftUnionVariantTemplate::Unit with { case_name, serialized_name, doc } %}
-{%- if doc != "" %}
-    /// {{ doc|safe }}
-{%- endif %}
+{%- for line in doc %}
+    {{ line }}
+{%- endfor %}
     case {{ case_name }}
 {%- when SwiftUnionVariantTemplate::Newtype with { case_name, serialized_name, type_str, doc } %}
-{%- if doc != "" %}
-    /// {{ doc|safe }}
-{%- endif %}
+{%- for line in doc %}
+    {{ line }}
+{%- endfor %}
     case {{ case_name }}({{ type_str|safe }})
 {%- endmatch %}
 {%- endfor %}

@@ -8,7 +8,7 @@ pub struct SwiftFieldTemplate {
     pub type_str: String,
     pub needs_rename: bool,
     /// Documentation comment for this field
-    pub doc: String,
+    pub doc: Vec<String>,
     /// Whether this field is deprecated
     pub deprecated: bool,
 }
@@ -37,7 +37,7 @@ pub struct SwiftStructTemplate {
     pub needs_coding_keys: bool,
     pub imports: Vec<SwiftImport>,
     /// Documentation comment for this struct
-    pub doc: String,
+    pub doc: Vec<String>,
 }
 
 /// Template for rendering a Swift enum
@@ -48,7 +48,7 @@ pub struct SwiftEnumTemplate {
     pub variants: Vec<SwiftEnumVariant>,
     pub visibility: String,
     /// Documentation comment for this enum
-    pub doc: String,
+    pub doc: Vec<String>,
 }
 
 /// Union variant types for template (adjacently tagged format)
@@ -58,14 +58,14 @@ pub enum SwiftUnionVariantTemplate {
     Unit {
         case_name: String,
         serialized_name: String,
-        doc: String,
+        doc: Vec<String>,
     },
     /// Newtype variant: `.created(User)`
     Newtype {
         case_name: String,
         serialized_name: String,
         type_str: String,
-        doc: String,
+        doc: Vec<String>,
     },
 }
 
@@ -80,7 +80,7 @@ pub struct SwiftUnionTemplate {
     pub visibility: String,
     pub imports: Vec<SwiftImport>,
     /// Documentation comment for this union
-    pub doc: String,
+    pub doc: Vec<String>,
 }
 
 /// Template for rendering a Swift type alias
@@ -92,7 +92,7 @@ pub struct SwiftTypeAliasTemplate {
     pub visibility: String,
     pub imports: Vec<SwiftImport>,
     /// Documentation comment for this type alias
-    pub doc: String,
+    pub doc: Vec<String>,
 }
 
 /// Template for rendering a barrel file (module documentation)
