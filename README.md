@@ -4,7 +4,7 @@
 [![docs.rs](https://img.shields.io/docsrs/fluorite)](https://docs.rs/fluorite/latest)
 [![CI](https://github.com/blossomstack/fluorite/actions/workflows/ci.yml/badge.svg)](https://github.com/blossomstack/fluorite/actions/workflows/ci.yml)
 
-Fluorite generates **Rust**, **TypeScript**, and **Swift** code from a shared schema language. Define your types once in `.fl` files, then generate type-safe, serialization-ready code for all three languages.
+Fluorite generates **Rust**, **TypeScript**, **Swift**, and **Go** code from a shared schema language. Define your types once in `.fl` files, then generate type-safe, serialization-ready code for all four languages.
 
 All generated code uses **camelCase** as the JSON serialization format, ensuring consistent cross-language interoperability without any configuration.
 
@@ -52,6 +52,9 @@ fluorite ts --inputs schema.fl --output ./src/generated
 
 # Swift
 fluorite swift --inputs schema.fl --output ./Sources/Generated
+
+# Go
+fluorite go --inputs schema.fl --output ./generated
 ```
 
 Generation overwrites files but never deletes them, so a renamed or moved type leaves its old file behind. Clean first to make the output tree a pure function of your schema:
@@ -60,7 +63,9 @@ Generation overwrites files but never deletes them, so a renamed or moved type l
 fluorite clean --output ./src/generated && fluorite ts --inputs schema.fl --output ./src/generated
 ```
 
-That's it. You now have type-safe structs (Rust), interfaces (TypeScript), and Codable types (Swift) with full serialization support.
+That's it. You now have type-safe structs (Rust), interfaces (TypeScript), Codable types (Swift), and structs with JSON tags (Go), all with full serialization support.
+
+Go output differs from the others in two ways worth knowing up front: every `.fl` package lands in a **single flat Go package** (Go forbids import cycles, and Fluorite already resolves type names globally), and the generated code imports **nothing outside the standard library**.
 
 ---
 
