@@ -19,12 +19,16 @@ RUST_TO_TS_DIR="$FIXTURES_DIR/rust_to_ts"
 TS_TO_RUST_DIR="$FIXTURES_DIR/ts_to_rust"
 RUST_TO_SWIFT_DIR="$FIXTURES_DIR/rust_to_swift"
 SWIFT_TO_RUST_DIR="$FIXTURES_DIR/swift_to_rust"
+RUST_TO_GO_DIR="$FIXTURES_DIR/rust_to_go"
+GO_TO_RUST_DIR="$FIXTURES_DIR/go_to_rust"
 
 # Create fixture directories
 mkdir -p "$RUST_TO_TS_DIR"
 mkdir -p "$TS_TO_RUST_DIR"
 mkdir -p "$RUST_TO_SWIFT_DIR"
 mkdir -p "$SWIFT_TO_RUST_DIR"
+mkdir -p "$RUST_TO_GO_DIR"
+mkdir -p "$GO_TO_RUST_DIR"
 
 # Track test results
 TESTS_PASSED=0
@@ -112,6 +116,42 @@ if command -v swift &> /dev/null; then
 else
     info "Swift not available, skipping Swift tests"
     SWIFT_AVAILABLE=false
+fi
+
+# Step 4.6: Build Go demo (if Go is available)
+echo ""
+echo "Step 4.6: Building Go demo..."
+if command -v go &> /dev/null; then
+    cd "$SCRIPT_DIR/../../examples/demo-go"
+    FLUORITE="$SCRIPT_DIR/../../target/debug/fluorite"
+    # Clean first: generation overwrites but never deletes, so a renamed type
+    # would otherwise leave a stale file behind that still compiles.
+    if "$FLUORITE" clean --output ./generated >/dev/null 2>&1 \
+        && "$FLUORITE" go --inputs ../demo/fluorite --output ./generated --package-name generated >/dev/null 2>&1; then
+        pass "Go types generated successfully"
+    else
+        fail "Go type generation failed"
+        exit 1
+    fi
+    # Generated Go must already be gofmt-clean. Formatting it here would hide a
+    # template bug, so this only checks. Note gofmt -l exits 0 either way.
+    GOFMT_OUT="$(gofmt -l ./generated)"
+    if [ -z "$GOFMT_OUT" ]; then
+        pass "Generated Go is gofmt-clean"
+    else
+        fail "Generated Go is not gofmt-clean: $GOFMT_OUT"
+        exit 1
+    fi
+    if go vet ./... && go build -o demo-go .; then
+        pass "Go demo built successfully"
+        GO_AVAILABLE=true
+    else
+        fail "Go demo build failed"
+        GO_AVAILABLE=false
+    fi
+else
+    info "Go not available, skipping Go tests"
+    GO_AVAILABLE=false
 fi
 
 # Step 5: Test Rust → TypeScript
@@ -242,6 +282,58 @@ if [ "$SWIFT_AVAILABLE" = true ]; then
     fi
 fi
 
+# Steps 9-10: Go legs (if Go available)
+if [ "$GO_AVAILABLE" = true ]; then
+    echo ""
+    echo "========================================="
+    echo "Step 9: Testing Rust → Go"
+    echo "========================================="
+
+    cd "$SCRIPT_DIR/../../examples/demo"
+    info "Running Rust demo to write JSON files for Go..."
+    cargo run --quiet -- write --output "$RUST_TO_GO_DIR" 2>/dev/null || true
+
+    if [ -f "$RUST_TO_GO_DIR/user.json" ]; then
+        pass "Rust wrote JSON files for Go"
+    else
+        fail "Rust failed to write JSON files for Go"
+    fi
+
+    cd "$SCRIPT_DIR/../../examples/demo-go"
+    info "Running Go demo to read Rust's JSON files..."
+    if ./demo-go --read "$RUST_TO_GO_DIR" >/dev/null; then
+        pass "Go successfully read Rust's JSON files"
+    else
+        fail "Go failed to read Rust's JSON files"
+    fi
+
+    echo ""
+    echo "========================================="
+    echo "Step 10: Testing Go → Rust"
+    echo "========================================="
+
+    info "Running Go demo to write JSON files..."
+    if ./demo-go --write "$GO_TO_RUST_DIR" >/dev/null; then
+        pass "Go wrote JSON files successfully"
+    else
+        fail "Go failed to write JSON files"
+    fi
+
+    if [ -f "$GO_TO_RUST_DIR/user.json" ] && [ -f "$GO_TO_RUST_DIR/user_event_created.json" ]; then
+        pass "Go JSON files exist"
+    else
+        fail "Go failed to write JSON files"
+    fi
+
+    cd "$SCRIPT_DIR/../../examples/demo"
+    info "Running Rust demo to read Go's JSON files..."
+    if cargo run --quiet -- read --input "$GO_TO_RUST_DIR" 2>/dev/null; then
+        pass "Rust successfully read Go's JSON files"
+    else
+        fail "Rust failed to read Go's JSON files"
+    fi
+fi
+
 # Final Summary
 echo ""
 echo "========================================="
@@ -260,6 +352,10 @@ if [ $TESTS_FAILED -eq 0 ]; then
     if [ "$SWIFT_AVAILABLE" = true ]; then
         echo "  ✓ Rust serializes → Swift deserializes"
         echo "  ✓ Swift serializes → Rust deserializes"
+    fi
+    if [ "$GO_AVAILABLE" = true ]; then
+        echo "  ✓ Rust serializes → Go deserializes"
+        echo "  ✓ Go serializes → Rust deserializes"
     fi
     echo "  ✓ Multi-package types (common, users, orders, notifications)"
     echo "  ✓ Adjacently tagged unions"

@@ -1,0 +1,89 @@
+// {{ name }}Variant is implemented by every variant of {{ name }}.
+type {{ name }}Variant interface {
+	is{{ name }}Variant()
+}
+{% for variant in variants %}
+{%- match variant %}
+{%- when GoUnionVariantTemplate::Unit with { struct_name, wire_name, doc } %}
+{%- for line in doc %}
+{{ line }}
+{%- endfor %}
+type {{ struct_name }} struct{}
+
+func ({{ struct_name }}) is{{ name }}Variant() {}
+{%- when GoUnionVariantTemplate::Newtype with { struct_name, wire_name, type_str, marshal_lines, doc } %}
+{%- for line in doc %}
+{{ line }}
+{%- endfor %}
+type {{ struct_name }} struct {
+	Value {{ type_str|safe }}
+}
+
+func ({{ struct_name }}) is{{ name }}Variant() {}
+{%- endmatch %}
+{% endfor %}
+{% for line in doc %}{{ line }}
+{% endfor -%}
+// {{ name }} is an adjacently tagged union: its JSON carries the variant name
+// in "{{ tag_field }}" and any payload in "{{ content_field }}".
+type {{ name }} struct {
+	Variant {{ name }}Variant
+}
+
+// MarshalJSON encodes the set variant, or fails if none is set.
+func (u {{ name }}) MarshalJSON() ([]byte, error) {
+	switch v := u.Variant.(type) {
+{%- for variant in variants %}
+{%- match variant %}
+{%- when GoUnionVariantTemplate::Unit with { struct_name, wire_name, doc } %}
+	case {{ struct_name }}:
+		return json.Marshal(struct {
+			Type string `json:"{{ tag_field }}"`
+		}{"{{ wire_name }}"})
+{%- when GoUnionVariantTemplate::Newtype with { struct_name, wire_name, type_str, marshal_lines, doc } %}
+	case {{ struct_name }}:
+		return json.Marshal(struct {
+{%- for line in marshal_lines %}
+			{{ line|safe }}
+{%- endfor %}
+		}{"{{ wire_name }}", v.Value})
+{%- endmatch %}
+{%- endfor %}
+	case nil:
+		return nil, fmt.Errorf("fluorite: {{ name }} has no variant set")
+	default:
+		return nil, fmt.Errorf("fluorite: unknown {{ name }} variant %T", v)
+	}
+}
+
+// UnmarshalJSON decodes the tag, then the payload for the matching variant.
+func (u *{{ name }}) UnmarshalJSON(data []byte) error {
+	var envelope struct {
+{%- for line in envelope_lines %}
+		{{ line|safe }}
+{%- endfor %}
+	}
+	if err := json.Unmarshal(data, &envelope); err != nil {
+		return err
+	}
+	switch envelope.{{ tag_go_name }} {
+{%- for variant in variants %}
+{%- match variant %}
+{%- when GoUnionVariantTemplate::Unit with { struct_name, wire_name, doc } %}
+	case "{{ wire_name }}":
+		u.Variant = {{ struct_name }}{}
+		return nil
+{%- when GoUnionVariantTemplate::Newtype with { struct_name, wire_name, type_str, marshal_lines, doc } %}
+	case "{{ wire_name }}":
+		var v {{ type_str|safe }}
+		if err := json.Unmarshal(envelope.{{ content_go_name }}, &v); err != nil {
+			return err
+		}
+		u.Variant = {{ struct_name }}{Value: v}
+		return nil
+{%- endmatch %}
+{%- endfor %}
+	default:
+		return fmt.Errorf("fluorite: unknown {{ name }} variant tag %q", envelope.{{ tag_go_name }})
+	}
+}

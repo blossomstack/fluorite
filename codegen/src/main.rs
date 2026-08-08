@@ -128,6 +128,29 @@ enum Commands {
         #[arg(long, default_value = "public")]
         visibility: String,
     },
+
+    /// Generate Go code from .fl definitions
+    Go {
+        /// Input .fl files or directories containing .fl files
+        #[arg(short, long, required = true, num_args = 1..)]
+        inputs: Vec<String>,
+
+        /// Output directory
+        #[arg(short, long)]
+        output: String,
+
+        /// Generate all types in a single types.go file
+        #[arg(long, default_value = "false")]
+        single_file: bool,
+
+        /// Custom type to use for 'Any' fields (default: any)
+        #[arg(long, default_value = "any")]
+        any_type: String,
+
+        /// Override the emitted package name (default: the output directory's basename)
+        #[arg(long)]
+        package_name: Option<String>,
+    },
 }
 
 fn main() -> anyhow::Result<()> {
@@ -260,6 +283,33 @@ fn main() -> anyhow::Result<()> {
             generator.generate_from_schema(&schema)?;
 
             println!("Swift code generation complete!");
+        }
+
+        Commands::Go {
+            inputs,
+            output,
+            single_file,
+            any_type,
+            package_name,
+        } => {
+            // Load inputs from .fl files
+            let schema = load_fl_inputs(&inputs)?;
+
+            // Build options
+            let mut options = code_gen::go::GoOptions::new(output)
+                .with_single_file(single_file)
+                .with_any_type(&any_type);
+
+            if let Some(name) = package_name {
+                options = options.with_package_name(&name);
+            }
+
+            // Generate
+            let fs = Arc::new(RealFileSystem::new());
+            let generator = code_gen::go::GoTemplateGenerator::new(options, fs);
+            generator.generate_from_schema(&schema)?;
+
+            println!("Go code generation complete!");
         }
     }
 
