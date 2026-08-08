@@ -1,0 +1,9 @@
+{%- for line in doc %}{{ line }}
+{% endfor -%}
+type {{ name }} string
+
+const (
+{%- for line in constant_lines %}
+{{ line|safe }}
+{%- endfor %}
+)

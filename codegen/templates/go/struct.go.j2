@@ -1,0 +1,7 @@
+{%- for line in doc %}{{ line }}
+{% endfor -%}
+type {{ name }} struct {
+{%- for line in field_lines %}
+{{ line|safe }}
+{%- endfor %}
+}
