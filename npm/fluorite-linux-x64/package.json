@@ -1,6 +1,6 @@
 {
   "name": "@blossomstack/fluorite-linux-x64",
-  "version": "0.6.2",
+  "version": "0.7.0",
   "description": "Fluorite CLI binary for Linux x64",
   "os": [
     "linux"
