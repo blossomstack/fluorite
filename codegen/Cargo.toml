@@ -27,5 +27,5 @@ serde = { version = "1.0", features = ["serde_derive"] }
 fluorite = { path = "../runtime/", version = "0.7.0" }
 derive-new = "0.7"
 logos = "0.16"
-chumsky = "0.9"
+chumsky = "0.13"
 ariadne = "0.6"
