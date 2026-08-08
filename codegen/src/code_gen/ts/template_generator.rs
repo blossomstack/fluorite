@@ -5,6 +5,7 @@ use std::sync::Arc;
 use anyhow::{anyhow, Result};
 use askama::Template;
 
+use crate::code_gen::doc::block_doc_lines;
 use crate::code_gen::fs::FileSystem;
 use crate::code_gen::ir::{
     IRField, IRFieldType, IRPrimitive, IRSchema, IRStruct, IRType, IRTypeAlias, IRTypeAliasTarget,
@@ -14,8 +15,8 @@ use crate::code_gen::utils::to_camel_case;
 use crate::code_gen::validation::{ValidationError, Validator};
 
 use super::templates::{
-    InterfaceTemplate, TsEnumTemplate, TsFieldTemplate, TsImport, TsIndexTemplate, TsModuleEntry,
-    TsTypeAliasTemplate, TsUnionTemplate, TsUnionVariantTemplate,
+    InterfaceTemplate, TsEnumTemplate, TsEnumVariantTemplate, TsFieldTemplate, TsImport,
+    TsIndexTemplate, TsModuleEntry, TsTypeAliasTemplate, TsUnionTemplate, TsUnionVariantTemplate,
 };
 use super::TypeScriptOptions;
 
@@ -144,7 +145,7 @@ impl TsTemplateGenerator {
             fields,
             use_readonly: self.options.use_readonly,
             imports,
-            doc: s.doc.clone().unwrap_or_default(),
+            doc: block_doc_lines(s.doc.as_deref()),
         };
 
         Ok(template.render()?)
@@ -153,8 +154,15 @@ impl TsTemplateGenerator {
     fn render_enum(&self, e: &crate::code_gen::ir::IREnum) -> Result<String> {
         let template = TsEnumTemplate {
             name: e.name.clone(),
-            variants: e.variants.clone(),
-            doc: e.doc.clone().unwrap_or_default(),
+            variants: e
+                .variants
+                .iter()
+                .map(|v| TsEnumVariantTemplate {
+                    name: v.name.clone(),
+                    doc: block_doc_lines(v.doc.as_deref()),
+                })
+                .collect(),
+            doc: block_doc_lines(e.doc.as_deref()),
         };
 
         Ok(template.render()?)
@@ -183,7 +191,7 @@ impl TsTemplateGenerator {
             content_field: u.content_field.clone(),
             variants,
             imports,
-            doc: u.doc.clone().unwrap_or_default(),
+            doc: block_doc_lines(u.doc.as_deref()),
         };
 
         Ok(template.render()?)
@@ -216,7 +224,7 @@ impl TsTemplateGenerator {
             name: a.name.clone(),
             target_type,
             imports,
-            doc: a.doc.clone().unwrap_or_default(),
+            doc: block_doc_lines(a.doc.as_deref()),
         };
 
         Ok(template.render()?)
@@ -236,7 +244,7 @@ impl TsTemplateGenerator {
             code_name,
             type_str,
             is_optional: field.is_optional,
-            doc: field.doc.clone().unwrap_or_default(),
+            doc: block_doc_lines(field.doc.as_deref()),
             deprecated: field.deprecated,
         })
     }
@@ -246,7 +254,7 @@ impl TsTemplateGenerator {
         variant: &IRUnionVariant,
         schema: &IRSchema,
     ) -> Result<TsUnionVariantTemplate> {
-        let doc = variant.doc().unwrap_or_default().to_owned();
+        let doc = block_doc_lines(variant.doc());
         match variant {
             IRUnionVariant::Unit { name, .. } => Ok(TsUnionVariantTemplate::Unit {
                 name: name.clone(),

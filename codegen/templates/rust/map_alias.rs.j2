@@ -1,4 +1,7 @@
 use std::collections::HashMap;
 
+{%- for line in doc %}
+{{ line }}
+{%- endfor %}
 pub type {{ name }} = HashMap<{{ key_type|safe }}, {{ value_type|safe }}>;
 

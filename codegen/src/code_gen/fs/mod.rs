@@ -27,6 +27,12 @@ pub trait FileSystem: Send + Sync {
 
     /// Create a directory and all parent directories
     fn create_dir_all(&self, path: &str) -> Result<()>;
+
+    /// Recursively remove a directory and everything under it.
+    ///
+    /// A missing directory is not an error, so `clean` followed by a generate
+    /// works on a fresh checkout.
+    fn remove_dir_all(&self, path: &str) -> Result<()>;
 }
 
 /// Real filesystem implementation
@@ -71,6 +77,14 @@ impl FileSystem for RealFileSystem {
     fn create_dir_all(&self, path: &str) -> Result<()> {
         fs::create_dir_all(path)?;
         Ok(())
+    }
+
+    fn remove_dir_all(&self, path: &str) -> Result<()> {
+        match fs::remove_dir_all(path) {
+            Ok(()) => Ok(()),
+            Err(e) if e.kind() == io::ErrorKind::NotFound => Ok(()),
+            Err(e) => Err(e.into()),
+        }
     }
 }
 
@@ -139,6 +153,13 @@ impl FileSystem for MemoryFileSystem {
 
     fn create_dir_all(&self, _path: &str) -> Result<()> {
         // No-op for memory filesystem
+        Ok(())
+    }
+
+    fn remove_dir_all(&self, path: &str) -> Result<()> {
+        let prefix = format!("{}/", path.trim_end_matches('/'));
+        let mut files = self.files.write().unwrap();
+        files.retain(|p, _| p != path && !p.starts_with(&prefix));
         Ok(())
     }
 }

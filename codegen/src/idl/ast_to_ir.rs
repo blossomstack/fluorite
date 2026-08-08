@@ -4,8 +4,8 @@ use anyhow::{anyhow, Result};
 use std::collections::HashMap;
 
 use crate::code_gen::ir::{
-    IREnum, IRField, IRFieldType, IRPackage, IRPrimitive, IRSchema, IRStruct, IRType, IRTypeAlias,
-    IRTypeAliasTarget, IRUnion, IRUnionVariant,
+    IREnum, IREnumVariant, IRField, IRFieldType, IRPackage, IRPrimitive, IRSchema, IRStruct,
+    IRType, IRTypeAlias, IRTypeAliasTarget, IRUnion, IRUnionVariant,
 };
 
 use super::ast::{
@@ -103,7 +103,10 @@ impl AstToIrConverter {
         let variants = ast_enum
             .variants
             .iter()
-            .map(|v| v.name.value.clone())
+            .map(|v| IREnumVariant {
+                name: v.name.value.clone(),
+                doc: v.doc.clone(),
+            })
             .collect();
 
         Ok(IRType::Enum(IREnum {
@@ -343,7 +346,13 @@ mod tests {
         match &package.types[0] {
             IRType::Enum(e) => {
                 assert_eq!(e.name, "Status");
-                assert_eq!(e.variants, vec!["Active", "Inactive"]);
+                assert_eq!(
+                    e.variants
+                        .iter()
+                        .map(|v| v.name.as_str())
+                        .collect::<Vec<_>>(),
+                    vec!["Active", "Inactive"]
+                );
             }
             _ => panic!("Expected enum"),
         }

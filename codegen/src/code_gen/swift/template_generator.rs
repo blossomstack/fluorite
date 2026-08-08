@@ -5,6 +5,7 @@ use std::sync::Arc;
 use anyhow::{anyhow, Result};
 use askama::Template;
 
+use crate::code_gen::doc::slash_doc_lines;
 use crate::code_gen::fs::FileSystem;
 use crate::code_gen::ir::{
     IREnum, IRField, IRFieldType, IRPrimitive, IRSchema, IRStruct, IRType, IRTypeAlias,
@@ -215,7 +216,7 @@ impl SwiftTemplateGenerator {
             visibility: visibility.to_string(),
             needs_coding_keys,
             imports,
-            doc: s.doc.clone().unwrap_or_default(),
+            doc: slash_doc_lines(s.doc.as_deref()),
         };
 
         Ok(template.render()?)
@@ -226,12 +227,13 @@ impl SwiftTemplateGenerator {
             .variants
             .iter()
             .map(|v| {
-                let code_name = to_camel_case(v);
-                let needs_rename = code_name != *v;
+                let code_name = to_camel_case(&v.name);
+                let needs_rename = code_name != v.name;
                 SwiftEnumVariant {
                     code_name,
-                    original_name: v.clone(),
+                    original_name: v.name.clone(),
                     needs_rename,
+                    doc: slash_doc_lines(v.doc.as_deref()),
                 }
             })
             .collect();
@@ -240,7 +242,7 @@ impl SwiftTemplateGenerator {
             name: e.name.clone(),
             variants,
             visibility: visibility.to_string(),
-            doc: e.doc.clone().unwrap_or_default(),
+            doc: slash_doc_lines(e.doc.as_deref()),
         };
 
         Ok(template.render()?)
@@ -276,7 +278,7 @@ impl SwiftTemplateGenerator {
             variants,
             visibility: visibility.to_string(),
             imports,
-            doc: u.doc.clone().unwrap_or_default(),
+            doc: slash_doc_lines(u.doc.as_deref()),
         };
 
         Ok(template.render()?)
@@ -316,7 +318,7 @@ impl SwiftTemplateGenerator {
             target_type,
             visibility: visibility.to_string(),
             imports,
-            doc: a.doc.clone().unwrap_or_default(),
+            doc: slash_doc_lines(a.doc.as_deref()),
         };
 
         Ok(template.render()?)
@@ -347,7 +349,7 @@ impl SwiftTemplateGenerator {
             original_name: json_key,
             type_str,
             needs_rename,
-            doc: field.doc.clone().unwrap_or_default(),
+            doc: slash_doc_lines(field.doc.as_deref()),
             deprecated: field.deprecated,
         })
     }
@@ -357,7 +359,7 @@ impl SwiftTemplateGenerator {
         variant: &IRUnionVariant,
         schema: &IRSchema,
     ) -> Result<SwiftUnionVariantTemplate> {
-        let doc = variant.doc().unwrap_or_default().to_owned();
+        let doc = slash_doc_lines(variant.doc());
         match variant {
             IRUnionVariant::Unit { name, .. } => Ok(SwiftUnionVariantTemplate::Unit {
                 case_name: to_camel_case(name),

@@ -1,2 +1,5 @@
+{%- for line in doc %}
+{{ line }}
+{%- endfor %}
 pub type {{ name }} = Vec<{{ item_type|safe }}>;
 

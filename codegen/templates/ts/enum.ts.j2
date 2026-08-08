@@ -1,10 +1,19 @@
-{%- if doc != "" %}
+{%- if !doc.is_empty() %}
 /**
- * {{ doc }}
+{%- for line in doc %}
+ {{ line }}
+{%- endfor %}
  */
 {%- endif %}
 export enum {{ name }} {
 {%- for variant in variants %}
-  {{ variant }} = "{{ variant }}",
+{%- if !variant.doc.is_empty() %}
+  /**
+{%- for line in variant.doc %}
+   {{ line }}
+{%- endfor %}
+   */
+{%- endif %}
+  {{ variant.name }} = "{{ variant.name }}",
 {%- endfor %}
 }

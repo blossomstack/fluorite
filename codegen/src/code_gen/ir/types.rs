@@ -135,8 +135,27 @@ pub enum IRPrimitive {
 #[derive(Debug, Clone)]
 pub struct IREnum {
     pub name: String,
-    pub variants: Vec<String>,
+    pub variants: Vec<IREnumVariant>,
     pub doc: Option<String>,
+}
+
+/// One variant of an enum. Carries a doc so `/// ...` above a variant reaches
+/// generated code, matching [`IRUnionVariant`].
+#[derive(Debug, Clone)]
+pub struct IREnumVariant {
+    pub name: String,
+    pub doc: Option<String>,
+}
+
+impl IREnumVariant {
+    /// A variant with no documentation — the common case in tests and in
+    /// schemas that only document the enum itself.
+    pub fn new(name: impl Into<String>) -> Self {
+        Self {
+            name: name.into(),
+            doc: None,
+        }
+    }
 }
 
 /// A tagged union type (adjacently tagged: `{tag_field: "Variant", content_field: value}`)

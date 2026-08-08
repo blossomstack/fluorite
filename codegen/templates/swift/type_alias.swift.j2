@@ -5,7 +5,7 @@ import FluoriteRuntime
 import Foundation
 {%- endif %}
 
-{%- if doc != "" %}
-/// {{ doc|safe }}
-{%- endif %}
+{%- for line in doc %}
+{{ line }}
+{%- endfor %}
 {{ visibility }} typealias {{ name }} = {{ target_type|safe }}

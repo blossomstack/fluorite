@@ -7,7 +7,7 @@ pub struct TsFieldTemplate {
     pub type_str: String,
     pub is_optional: bool,
     /// Documentation comment for this field
-    pub doc: String,
+    pub doc: Vec<String>,
     /// Whether this field is deprecated
     pub deprecated: bool,
 }
@@ -28,7 +28,7 @@ pub struct InterfaceTemplate {
     pub use_readonly: bool,
     pub imports: Vec<TsImport>,
     /// Documentation comment for this interface
-    pub doc: String,
+    pub doc: Vec<String>,
 }
 
 /// Template for rendering a TypeScript enum
@@ -36,21 +36,29 @@ pub struct InterfaceTemplate {
 #[template(path = "ts/enum.ts.j2")]
 pub struct TsEnumTemplate {
     pub name: String,
-    pub variants: Vec<String>,
+    pub variants: Vec<TsEnumVariantTemplate>,
     /// Documentation comment for this enum
-    pub doc: String,
+    pub doc: Vec<String>,
+}
+
+/// One enum variant for TypeScript templates
+#[derive(Clone)]
+pub struct TsEnumVariantTemplate {
+    pub name: String,
+    /// Documentation comment for this variant
+    pub doc: Vec<String>,
 }
 
 /// Union variant types for template (adjacently tagged format)
 #[derive(Clone)]
 pub enum TsUnionVariantTemplate {
     /// Unit variant: `{ type: "Deleted" }`
-    Unit { name: String, doc: String },
+    Unit { name: String, doc: Vec<String> },
     /// Newtype variant: `{ type: "Created", value: ... }`
     Newtype {
         name: String,
         type_str: String,
-        doc: String,
+        doc: Vec<String>,
     },
 }
 
@@ -64,7 +72,7 @@ pub struct TsUnionTemplate {
     pub variants: Vec<TsUnionVariantTemplate>,
     pub imports: Vec<TsImport>,
     /// Documentation comment for this union
-    pub doc: String,
+    pub doc: Vec<String>,
 }
 
 /// Template for rendering a TypeScript type alias
@@ -75,7 +83,7 @@ pub struct TsTypeAliasTemplate {
     pub target_type: String,
     pub imports: Vec<TsImport>,
     /// Documentation comment for this type alias
-    pub doc: String,
+    pub doc: Vec<String>,
 }
 
 /// Template for rendering an index file

@@ -54,6 +54,12 @@ fluorite ts --inputs schema.fl --output ./src/generated
 fluorite swift --inputs schema.fl --output ./Sources/Generated
 ```
 
+Generation overwrites files but never deletes them, so a renamed or moved type leaves its old file behind. Clean first to make the output tree a pure function of your schema:
+
+```bash
+fluorite clean --output ./src/generated && fluorite ts --inputs schema.fl --output ./src/generated
+```
+
 That's it. You now have type-safe structs (Rust), interfaces (TypeScript), and Codable types (Swift) with full serialization support.
 
 ---
@@ -190,6 +196,8 @@ struct User {
     id: String,
 }
 ```
+
+Consecutive `///` lines form a single comment and are emitted one line per line, so a sentence that wraps in the schema stays intact in every generated language. The text is copied verbatim — nothing is escaped.
 
 ### Attributes
 
