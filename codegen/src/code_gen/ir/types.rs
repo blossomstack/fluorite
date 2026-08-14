@@ -3,12 +3,17 @@
 //! This IR sits between the parsed YAML definitions and language-specific
 //! code generation, providing a clean abstraction layer.
 
-use std::collections::HashMap;
+use std::collections::BTreeMap;
 
-/// Represents a complete schema ready for code generation
+/// Represents a complete schema ready for code generation.
+///
+/// Packages are held in a `BTreeMap` so every traversal — file emission, module
+/// declarations, import lists — visits them in the same order on every run.
+/// A `HashMap` here reseeds per process, which made generated output vary
+/// between otherwise identical builds.
 #[derive(Debug, Clone)]
 pub struct IRSchema {
-    pub packages: HashMap<String, IRPackage>,
+    pub packages: BTreeMap<String, IRPackage>,
 }
 
 /// A package/module containing types
@@ -97,10 +102,34 @@ impl IRField {
 #[derive(Debug, Clone)]
 pub enum IRFieldType {
     Primitive(IRPrimitive),
-    Custom(String),
+    Custom(IRTypeRef),
     Any,
     List(Box<IRFieldType>),
     Map(Box<IRFieldType>, Box<IRFieldType>),
+}
+
+/// A reference to a user-defined type, resolved to the package that declares it.
+///
+/// Resolution happens once, while lowering the AST, because that is the only
+/// point where the referencing file's package and `use` imports are known. A
+/// bare name alone cannot be resolved: two packages may declare the same name,
+/// and a generator scanning the schema for a match has no way to pick the right
+/// one.
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
+pub struct IRTypeRef {
+    /// Dotted package name that declares the type, e.g. `demo.common`.
+    pub package: String,
+    /// Bare type name, e.g. `Address`.
+    pub name: String,
+}
+
+impl IRTypeRef {
+    pub fn new(package: impl Into<String>, name: impl Into<String>) -> Self {
+        Self {
+            package: package.into(),
+            name: name.into(),
+        }
+    }
 }
 
 /// Primitive types

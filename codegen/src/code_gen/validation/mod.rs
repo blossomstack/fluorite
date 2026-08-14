@@ -5,9 +5,15 @@
 use std::collections::{HashMap, HashSet};
 
 use crate::code_gen::ir::{
-    IRFieldType, IRPackage, IRSchema, IRStruct, IRType, IRTypeAlias, IRTypeAliasTarget, IRUnion,
-    IRUnionVariant,
+    IRFieldType, IRPackage, IRSchema, IRStruct, IRType, IRTypeAlias, IRTypeAliasTarget, IRTypeRef,
+    IRUnion, IRUnionVariant,
 };
+
+/// `package.Name`, for error messages that must distinguish two same-named
+/// types in different packages.
+fn qualified(type_ref: &IRTypeRef) -> String {
+    format!("{}.{}", type_ref.package, type_ref.name)
+}
 
 /// Validation errors
 #[derive(Debug, Clone, PartialEq)]
@@ -113,12 +119,17 @@ impl Validator {
         errors
     }
 
-    fn collect_known_types(&self, schema: &IRSchema) -> HashSet<String> {
-        let mut types = self.primitive_types.clone();
+    /// Every declared type, keyed by the package that declares it.
+    ///
+    /// Keyed on the package too, not the bare name: two packages may declare
+    /// the same name, and a reference is only valid if the package it names
+    /// actually declares it.
+    fn collect_known_types(&self, schema: &IRSchema) -> HashSet<IRTypeRef> {
+        let mut types = HashSet::new();
 
         for package in schema.packages.values() {
             for ir_type in &package.types {
-                types.insert(ir_type.name().to_string());
+                types.insert(IRTypeRef::new(&package.name, ir_type.name()));
             }
         }
 
@@ -149,7 +160,7 @@ impl Validator {
     fn validate_package(
         &self,
         package: &IRPackage,
-        known_types: &HashSet<String>,
+        known_types: &HashSet<IRTypeRef>,
     ) -> Vec<ValidationError> {
         let mut errors = Vec::new();
 
@@ -177,14 +188,18 @@ impl Validator {
         errors
     }
 
-    fn validate_struct(&self, s: &IRStruct, known_types: &HashSet<String>) -> Vec<ValidationError> {
+    fn validate_struct(
+        &self,
+        s: &IRStruct,
+        known_types: &HashSet<IRTypeRef>,
+    ) -> Vec<ValidationError> {
         let mut errors = Vec::new();
 
         for field in &s.fields {
-            if let Some(type_name) = self.get_custom_type_name(&field.field_type) {
-                if !known_types.contains(&type_name) {
+            if let Some(type_ref) = self.get_custom_type_name(&field.field_type) {
+                if !known_types.contains(&type_ref) {
                     errors.push(ValidationError::UnknownType {
-                        type_name,
+                        type_name: qualified(&type_ref),
                         referenced_from: s.name.clone(),
                         field_name: Some(field.name.clone()),
                     });
@@ -195,7 +210,11 @@ impl Validator {
         errors
     }
 
-    fn validate_union(&self, u: &IRUnion, known_types: &HashSet<String>) -> Vec<ValidationError> {
+    fn validate_union(
+        &self,
+        u: &IRUnion,
+        known_types: &HashSet<IRTypeRef>,
+    ) -> Vec<ValidationError> {
         let mut errors = Vec::new();
 
         if u.variants.is_empty() {
@@ -208,10 +227,10 @@ impl Validator {
             match variant {
                 IRUnionVariant::Unit { .. } => {}
                 IRUnionVariant::Newtype { ty: field_type, .. } => {
-                    if let Some(type_name) = self.get_custom_type_name(field_type) {
-                        if !known_types.contains(&type_name) {
+                    if let Some(type_ref) = self.get_custom_type_name(field_type) {
+                        if !known_types.contains(&type_ref) {
                             errors.push(ValidationError::UnknownType {
-                                type_name,
+                                type_name: qualified(&type_ref),
                                 referenced_from: u.name.clone(),
                                 field_name: None,
                             });
@@ -227,16 +246,16 @@ impl Validator {
     fn validate_type_alias(
         &self,
         a: &IRTypeAlias,
-        known_types: &HashSet<String>,
+        known_types: &HashSet<IRTypeRef>,
     ) -> Vec<ValidationError> {
         let mut errors = Vec::new();
 
         match &a.target {
             IRTypeAliasTarget::List(item_type) => {
-                if let Some(type_name) = self.get_custom_type_name(item_type) {
-                    if !known_types.contains(&type_name) {
+                if let Some(type_ref) = self.get_custom_type_name(item_type) {
+                    if !known_types.contains(&type_ref) {
                         errors.push(ValidationError::UnknownType {
-                            type_name,
+                            type_name: qualified(&type_ref),
                             referenced_from: a.name.clone(),
                             field_name: None,
                         });
@@ -244,19 +263,19 @@ impl Validator {
                 }
             }
             IRTypeAliasTarget::Map(key_type, value_type) => {
-                if let Some(type_name) = self.get_custom_type_name(key_type) {
-                    if !known_types.contains(&type_name) {
+                if let Some(type_ref) = self.get_custom_type_name(key_type) {
+                    if !known_types.contains(&type_ref) {
                         errors.push(ValidationError::UnknownType {
-                            type_name,
+                            type_name: qualified(&type_ref),
                             referenced_from: a.name.clone(),
                             field_name: Some("key".to_string()),
                         });
                     }
                 }
-                if let Some(type_name) = self.get_custom_type_name(value_type) {
-                    if !known_types.contains(&type_name) {
+                if let Some(type_ref) = self.get_custom_type_name(value_type) {
+                    if !known_types.contains(&type_ref) {
                         errors.push(ValidationError::UnknownType {
-                            type_name,
+                            type_name: qualified(&type_ref),
                             referenced_from: a.name.clone(),
                             field_name: Some("value".to_string()),
                         });
@@ -268,9 +287,9 @@ impl Validator {
         errors
     }
 
-    fn get_custom_type_name(&self, field_type: &IRFieldType) -> Option<String> {
+    fn get_custom_type_name(&self, field_type: &IRFieldType) -> Option<IRTypeRef> {
         match field_type {
-            IRFieldType::Custom(name) => Some(name.clone()),
+            IRFieldType::Custom(type_ref) => Some(type_ref.clone()),
             IRFieldType::List(inner) => self.get_custom_type_name(inner),
             IRFieldType::Map(k, v) => self
                 .get_custom_type_name(k)
@@ -285,7 +304,7 @@ impl Validator {
 
         for package in schema.packages.values() {
             for ir_type in &package.types {
-                let type_name = ir_type.name().to_string();
+                let type_name = qualified(&IRTypeRef::new(&package.name, ir_type.name()));
                 let type_deps = self.get_type_dependencies(ir_type);
                 deps.insert(type_name, type_deps);
             }
@@ -319,7 +338,7 @@ impl Validator {
                     if let Some(name) = self.get_custom_type_name(&field.field_type) {
                         // Exclude boxed fields from dependency graph (they break cycles)
                         if !field.is_boxed {
-                            deps.push(name);
+                            deps.push(qualified(&name));
                         }
                     }
                 }
@@ -329,7 +348,7 @@ impl Validator {
                     match variant {
                         IRUnionVariant::Newtype { ty: field_type, .. } => {
                             if let Some(name) = self.get_custom_type_name(field_type) {
-                                deps.push(name);
+                                deps.push(qualified(&name));
                             }
                         }
                         IRUnionVariant::Unit { .. } => {}
@@ -339,15 +358,15 @@ impl Validator {
             IRType::TypeAlias(a) => match &a.target {
                 IRTypeAliasTarget::List(t) => {
                     if let Some(name) = self.get_custom_type_name(t) {
-                        deps.push(name);
+                        deps.push(qualified(&name));
                     }
                 }
                 IRTypeAliasTarget::Map(k, v) => {
                     if let Some(name) = self.get_custom_type_name(k) {
-                        deps.push(name);
+                        deps.push(qualified(&name));
                     }
                     if let Some(name) = self.get_custom_type_name(v) {
-                        deps.push(name);
+                        deps.push(qualified(&name));
                     }
                 }
             },

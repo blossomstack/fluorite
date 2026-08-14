@@ -2,7 +2,7 @@ use std::sync::Arc;
 
 use fluorite_codegen::code_gen::fs::MemoryFileSystem;
 use fluorite_codegen::code_gen::go::{GoOptions, GoTemplateGenerator};
-use fluorite_codegen::code_gen::ir::{IRFieldType, IRPrimitive, IRSchema};
+use fluorite_codegen::code_gen::ir::{IRFieldType, IRPrimitive, IRSchema, IRTypeRef};
 
 fn generator(options: GoOptions) -> (GoTemplateGenerator, Arc<MemoryFileSystem>) {
     let fs = Arc::new(MemoryFileSystem::new());
@@ -51,7 +51,7 @@ fn primitives_map_to_stdlib_go_types() {
 fn collections_and_any_format_as_go_types() {
     let (generator, _fs) = generator(GoOptions::new("./out".to_string()));
     let schema = IRSchema {
-        packages: std::collections::HashMap::new(),
+        packages: std::collections::BTreeMap::new(),
     };
 
     let list = IRFieldType::List(Box::new(IRFieldType::Primitive(IRPrimitive::String)));
@@ -59,7 +59,7 @@ fn collections_and_any_format_as_go_types() {
 
     let map = IRFieldType::Map(
         Box::new(IRFieldType::Primitive(IRPrimitive::String)),
-        Box::new(IRFieldType::Custom("Order".to_string())),
+        Box::new(IRFieldType::Custom(IRTypeRef::new("demo", "Order"))),
     );
     assert_eq!(
         generator.format_type(&map, &schema).unwrap(),
@@ -94,7 +94,7 @@ fn field(name: &str, ty: IRFieldType, optional: bool, doc: Option<&str>) -> IRFi
 }
 
 fn schema_of(package: &str, types: Vec<IRType>) -> IRSchema {
-    let mut packages = std::collections::HashMap::new();
+    let mut packages = std::collections::BTreeMap::new();
     packages.insert(
         package.to_string(),
         IRPackage {
@@ -213,14 +213,14 @@ fn generates_an_enum_as_a_string_type_with_aligned_constants() {
 fn generates_type_aliases_for_lists_and_maps() {
     let list = IRTypeAlias {
         name: "UserList".to_string(),
-        target: IRTypeAliasTarget::List(IRFieldType::Custom("User".to_string())),
+        target: IRTypeAliasTarget::List(IRFieldType::Custom(IRTypeRef::new("demo", "User"))),
         doc: None,
     };
     let map = IRTypeAlias {
         name: "OrderMap".to_string(),
         target: IRTypeAliasTarget::Map(
             IRFieldType::Primitive(IRPrimitive::String),
-            IRFieldType::Custom("Order".to_string()),
+            IRFieldType::Custom(IRTypeRef::new("demo", "Order")),
         ),
         doc: None,
     };
@@ -304,7 +304,7 @@ fn single_file_mode_emits_one_file_with_one_package_clause() {
 
 #[test]
 fn rejects_a_type_name_used_in_two_packages() {
-    let mut packages = std::collections::HashMap::new();
+    let mut packages = std::collections::BTreeMap::new();
     for pkg in ["demo.users", "demo.orders"] {
         packages.insert(
             pkg.to_string(),
@@ -404,7 +404,7 @@ fn generates_a_union_as_a_sealed_interface_wrapper() {
         variants: vec![
             IRUnionVariant::Newtype {
                 name: "Created".to_string(),
-                ty: IRFieldType::Custom("User".to_string()),
+                ty: IRFieldType::Custom(IRTypeRef::new("demo", "User")),
                 doc: None,
             },
             IRUnionVariant::Unit {

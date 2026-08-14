@@ -42,6 +42,18 @@ pub enum AstItem {
     TypeAlias(AstTypeAlias),
 }
 
+impl AstItem {
+    /// The declared type name, whichever kind of item this is.
+    pub fn name(&self) -> &str {
+        match self {
+            AstItem::Struct(s) => &s.name.value,
+            AstItem::Enum(e) => &e.name.value,
+            AstItem::Union(u) => &u.name.value,
+            AstItem::TypeAlias(t) => &t.name.value,
+        }
+    }
+}
+
 /// Struct definition
 #[derive(Debug, Clone)]
 pub struct AstStruct {

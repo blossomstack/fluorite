@@ -214,7 +214,7 @@ type UserList = Vec<User>;
 ### IDL Features
 
 - **Package declaration**: `package name;`
-- **Imports**: `use path::Type;` (supports dotted paths: `use demo.common.Address;`)
+- **Imports**: `use path::Type;` (supports dotted paths: `use demo.common.Address;`). Required for any cross-package reference: a bare name resolves to the file's own package, then to that file's imports, and is otherwise an error. Two packages may declare the same type name.
 - **Structs**: `struct Name { fields }`
 - **Enums**: `enum Name { Variants }`
 - **Unions**: Adjacently tagged unions (see Union Design below)

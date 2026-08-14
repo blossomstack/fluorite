@@ -4,7 +4,7 @@ use fluorite_codegen::code_gen::{
     fs::{FileSystem, FsWriter, MemoryFileSystem},
     ir::{
         IREnum, IREnumVariant, IRField, IRFieldType, IRPackage, IRPrimitive, IRSchema, IRStruct,
-        IRType, IRTypeAlias, IRTypeAliasTarget, IRUnion, IRUnionVariant,
+        IRType, IRTypeAlias, IRTypeAliasTarget, IRTypeRef, IRUnion, IRUnionVariant,
     },
     rust::{RustOptions, RustTemplateGenerator, Visibility},
     validation::{ValidationError, Validator},
@@ -290,7 +290,7 @@ mod ir_field_tests {
     fn test_field_optional_and_boxed() {
         let field = IRField {
             name: "data".to_string(),
-            field_type: IRFieldType::Custom("SomeType".to_string()),
+            field_type: IRFieldType::Custom(IRTypeRef::new("test", "SomeType")),
             is_optional: true,
             is_boxed: true,
             rename: None,
@@ -348,7 +348,7 @@ mod ir_type_tests {
     fn test_type_alias_name() {
         let ir_type = IRType::TypeAlias(IRTypeAlias {
             name: "OrderList".to_string(),
-            target: IRTypeAliasTarget::List(IRFieldType::Custom("Order".to_string())),
+            target: IRTypeAliasTarget::List(IRFieldType::Custom(IRTypeRef::new("test", "Order"))),
             doc: None,
         });
         assert_eq!(ir_type.name(), "OrderList");
@@ -371,7 +371,7 @@ mod ir_union_variant_tests {
     fn test_newtype_variant_name() {
         let variant = IRUnionVariant::Newtype {
             name: "Info".to_string(),
-            ty: IRFieldType::Custom("AddressInfo".to_string()),
+            ty: IRFieldType::Custom(IRTypeRef::new("test", "AddressInfo")),
             doc: None,
         };
         assert_eq!(variant.name(), "Info");
@@ -386,7 +386,7 @@ mod validator_tests {
     use super::*;
 
     fn create_schema(packages: Vec<(String, Vec<IRType>)>) -> IRSchema {
-        let mut pkg_map = std::collections::HashMap::new();
+        let mut pkg_map = std::collections::BTreeMap::new();
         for (name, types) in packages {
             pkg_map.insert(name.clone(), IRPackage { name, types });
         }
@@ -441,7 +441,7 @@ mod validator_tests {
                 name: "User".to_string(),
                 fields: vec![IRField {
                     name: "address".to_string(),
-                    field_type: IRFieldType::Custom("NonExistentType".to_string()),
+                    field_type: IRFieldType::Custom(IRTypeRef::new("test", "NonExistentType")),
                     is_optional: false,
                     is_boxed: false,
                     rename: None,
@@ -466,7 +466,7 @@ mod validator_tests {
                 type_name,
                 referenced_from,
                 field_name,
-            } if type_name == "NonExistentType"
+            } if type_name == "test.NonExistentType"
                 && referenced_from == "User"
                 && *field_name == Some("address".to_string())
         ));
@@ -553,7 +553,7 @@ mod validator_tests {
                 content_field: "value".to_string(),
                 variants: vec![IRUnionVariant::Newtype {
                     name: "Var".to_string(),
-                    ty: IRFieldType::Custom("NonExistent".to_string()),
+                    ty: IRFieldType::Custom(IRTypeRef::new("test", "NonExistent")),
                     doc: None,
                 }],
                 doc: None,
@@ -564,7 +564,7 @@ mod validator_tests {
         assert_eq!(errors.len(), 1);
         assert!(matches!(
             &errors[0],
-            ValidationError::UnknownType { type_name, .. } if type_name == "NonExistent"
+            ValidationError::UnknownType { type_name, .. } if type_name == "test.NonExistent"
         ));
     }
 
@@ -574,7 +574,10 @@ mod validator_tests {
             "test".to_string(),
             vec![IRType::TypeAlias(IRTypeAlias {
                 name: "ItemList".to_string(),
-                target: IRTypeAliasTarget::List(IRFieldType::Custom("NonExistent".to_string())),
+                target: IRTypeAliasTarget::List(IRFieldType::Custom(IRTypeRef::new(
+                    "test",
+                    "NonExistent",
+                ))),
                 doc: None,
             })],
         )]);
@@ -583,7 +586,7 @@ mod validator_tests {
         assert_eq!(errors.len(), 1);
         assert!(matches!(
             &errors[0],
-            ValidationError::UnknownType { type_name, .. } if type_name == "NonExistent"
+            ValidationError::UnknownType { type_name, .. } if type_name == "test.NonExistent"
         ));
     }
 
@@ -594,7 +597,7 @@ mod validator_tests {
             vec![IRType::TypeAlias(IRTypeAlias {
                 name: "ItemMap".to_string(),
                 target: IRTypeAliasTarget::Map(
-                    IRFieldType::Custom("NonExistent".to_string()),
+                    IRFieldType::Custom(IRTypeRef::new("test", "NonExistent")),
                     IRFieldType::Primitive(IRPrimitive::String),
                 ),
                 doc: None,
@@ -606,7 +609,7 @@ mod validator_tests {
         assert!(matches!(
             &errors[0],
             ValidationError::UnknownType { type_name, field_name, .. }
-            if type_name == "NonExistent" && *field_name == Some("key".to_string())
+            if type_name == "test.NonExistent" && *field_name == Some("key".to_string())
         ));
     }
 
@@ -618,7 +621,7 @@ mod validator_tests {
                 name: "ItemMap".to_string(),
                 target: IRTypeAliasTarget::Map(
                     IRFieldType::Primitive(IRPrimitive::String),
-                    IRFieldType::Custom("NonExistent".to_string()),
+                    IRFieldType::Custom(IRTypeRef::new("test", "NonExistent")),
                 ),
                 doc: None,
             })],
@@ -629,7 +632,7 @@ mod validator_tests {
         assert!(matches!(
             &errors[0],
             ValidationError::UnknownType { type_name, field_name, .. }
-            if type_name == "NonExistent" && *field_name == Some("value".to_string())
+            if type_name == "test.NonExistent" && *field_name == Some("value".to_string())
         ));
     }
 
@@ -651,7 +654,7 @@ mod validator_tests {
                     name: "TypeB".to_string(),
                     fields: vec![IRField {
                         name: "ref_a".to_string(),
-                        field_type: IRFieldType::Custom("TypeA".to_string()),
+                        field_type: IRFieldType::Custom(IRTypeRef::new("package.a", "TypeA")),
                         is_optional: false,
                         is_boxed: false,
                         rename: None,
@@ -1130,7 +1133,7 @@ mod template_generator_tests {
 
         let generator = RustTemplateGenerator::new(options, fs.clone());
         let schema = IRSchema {
-            packages: std::collections::HashMap::new(),
+            packages: std::collections::BTreeMap::new(),
         };
         let result = generator.generate_from_schema(&schema);
 
@@ -1144,9 +1147,9 @@ mod template_generator_tests {
 // ============================================================================
 
 fn create_test_schema() -> IRSchema {
-    use std::collections::HashMap;
+    use std::collections::BTreeMap;
 
-    let mut packages = HashMap::new();
+    let mut packages = BTreeMap::new();
 
     // Users package
     let users_pkg = IRPackage {
@@ -1199,7 +1202,7 @@ fn create_test_schema() -> IRSchema {
                     },
                     IRField {
                         name: "gender".to_string(),
-                        field_type: IRFieldType::Custom("Gender".to_string()),
+                        field_type: IRFieldType::Custom(IRTypeRef::new("test.users", "Gender")),
                         is_optional: false,
                         is_boxed: false,
                         rename: None,
@@ -1274,7 +1277,7 @@ fn create_test_schema() -> IRSchema {
                     },
                     IRField {
                         name: "user".to_string(),
-                        field_type: IRFieldType::Custom("User".to_string()),
+                        field_type: IRFieldType::Custom(IRTypeRef::new("test.users", "User")),
                         is_optional: false,
                         is_boxed: false,
                         rename: None,
@@ -1288,7 +1291,7 @@ fn create_test_schema() -> IRSchema {
                     },
                     IRField {
                         name: "shipping".to_string(),
-                        field_type: IRFieldType::Custom("Shipping".to_string()),
+                        field_type: IRFieldType::Custom(IRTypeRef::new("test.orders", "Shipping")),
                         is_optional: true,
                         is_boxed: true,
                         rename: None,
@@ -1337,7 +1340,7 @@ fn create_test_schema() -> IRSchema {
                     },
                     IRField {
                         name: "order".to_string(),
-                        field_type: IRFieldType::Custom("Order".to_string()),
+                        field_type: IRFieldType::Custom(IRTypeRef::new("test.orders", "Order")),
                         is_optional: false,
                         is_boxed: false,
                         rename: None,
@@ -1351,7 +1354,7 @@ fn create_test_schema() -> IRSchema {
                     },
                     IRField {
                         name: "address".to_string(),
-                        field_type: IRFieldType::Custom("Address".to_string()),
+                        field_type: IRFieldType::Custom(IRTypeRef::new("test.orders", "Address")),
                         is_optional: false,
                         is_boxed: false,
                         rename: None,
@@ -1379,12 +1382,12 @@ fn create_test_schema() -> IRSchema {
                     },
                     IRUnionVariant::Newtype {
                         name: "PostCode".to_string(),
-                        ty: IRFieldType::Custom("PostCodeData".to_string()),
+                        ty: IRFieldType::Custom(IRTypeRef::new("test.orders", "PostCodeData")),
                         doc: None,
                     },
                     IRUnionVariant::Newtype {
                         name: "AddressInfo".to_string(),
-                        ty: IRFieldType::Custom("AddressInfoData".to_string()),
+                        ty: IRFieldType::Custom(IRTypeRef::new("test.orders", "AddressInfoData")),
                         doc: None,
                     },
                 ],
@@ -1410,7 +1413,7 @@ fn create_test_schema() -> IRSchema {
                     },
                     IRField {
                         name: "order".to_string(),
-                        field_type: IRFieldType::Custom("Order".to_string()),
+                        field_type: IRFieldType::Custom(IRTypeRef::new("test.orders", "Order")),
                         is_optional: false,
                         is_boxed: false,
                         rename: None,
@@ -1477,14 +1480,17 @@ fn create_test_schema() -> IRSchema {
             }),
             IRType::TypeAlias(IRTypeAlias {
                 name: "OrderList".to_string(),
-                target: IRTypeAliasTarget::List(IRFieldType::Custom("Order".to_string())),
+                target: IRTypeAliasTarget::List(IRFieldType::Custom(IRTypeRef::new(
+                    "test.orders",
+                    "Order",
+                ))),
                 doc: None,
             }),
             IRType::TypeAlias(IRTypeAlias {
                 name: "OrderMap".to_string(),
                 target: IRTypeAliasTarget::Map(
                     IRFieldType::Primitive(IRPrimitive::String),
-                    IRFieldType::Custom("Order".to_string()),
+                    IRFieldType::Custom(IRTypeRef::new("test.orders", "Order")),
                 ),
                 doc: None,
             }),

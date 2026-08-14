@@ -1,11 +1,11 @@
 //! Converts AST types to IR types for code generation
 
 use anyhow::{anyhow, Result};
-use std::collections::HashMap;
+use std::collections::{BTreeMap, BTreeSet};
 
 use crate::code_gen::ir::{
     IREnum, IREnumVariant, IRField, IRFieldType, IRPackage, IRPrimitive, IRSchema, IRStruct,
-    IRType, IRTypeAlias, IRTypeAliasTarget, IRUnion, IRUnionVariant,
+    IRType, IRTypeAlias, IRTypeAliasTarget, IRTypeRef, IRUnion, IRUnionVariant,
 };
 
 use super::ast::{
@@ -13,83 +13,216 @@ use super::ast::{
     AstUnionVariant,
 };
 
-/// Converts AST files to IR schema
-pub struct AstToIrConverter {
-    /// All type names across all files (for resolving references)
-    all_type_names: std::collections::HashSet<String>,
+/// Where a file's bare type names may resolve to.
+///
+/// Built per file, because `use` imports are per file. Resolution order is
+/// deliberately narrow: a name is either declared in the file's own package or
+/// explicitly imported. Anything else is an error — see [`Scope::resolve`].
+struct Scope<'a> {
+    /// Package of the file being lowered.
+    package: &'a str,
+    /// Type names declared in that package.
+    declared: &'a BTreeSet<String>,
+    /// Bare name → package, from this file's `use` statements.
+    imports: BTreeMap<String, String>,
+    /// Every package that declares a given bare name, for error messages.
+    owners: &'a BTreeMap<String, BTreeSet<String>>,
 }
 
-impl AstToIrConverter {
-    pub fn new() -> Self {
-        Self {
-            all_type_names: std::collections::HashSet::new(),
+impl Scope<'_> {
+    /// Resolve a bare type name to the package that declares it.
+    fn resolve(&self, name: &str) -> Result<IRTypeRef> {
+        let local = self.declared.contains(name);
+        let imported = self.imports.get(name);
+
+        match (local, imported) {
+            // Declaring a name and importing the same name leaves the reference
+            // genuinely ambiguous. Rust rejects this too (E0255).
+            (true, Some(from)) => Err(anyhow!(
+                "'{name}' is declared in package '{}' and also imported from '{from}'. \
+                 Remove the import or rename one of the types.",
+                self.package
+            )),
+            (true, None) => Ok(IRTypeRef::new(self.package, name)),
+            (false, Some(from)) => Ok(IRTypeRef::new(from, name)),
+            (false, None) => Err(self.unresolved(name)),
         }
     }
 
-    /// Convert multiple AST files to a single IR schema
-    pub fn convert_files(mut self, files: &[AstFile]) -> Result<IRSchema> {
-        // First pass: collect all type names
-        self.collect_type_names(files);
+    fn unresolved(&self, name: &str) -> anyhow::Error {
+        match self.owners.get(name) {
+            Some(packages) => {
+                let candidates = packages
+                    .iter()
+                    .map(|p| format!("use {p}.{name};"))
+                    .collect::<Vec<_>>()
+                    .join("\n  ");
+                anyhow!(
+                    "'{name}' is not declared in package '{}' and is not imported. \
+                     It is declared in {}. Add one of:\n  {candidates}",
+                    self.package,
+                    packages
+                        .iter()
+                        .map(|p| format!("'{p}'"))
+                        .collect::<Vec<_>>()
+                        .join(" and "),
+                )
+            }
+            None => anyhow!(
+                "Unknown type '{name}' referenced from package '{}'",
+                self.package
+            ),
+        }
+    }
+}
 
-        // Second pass: build IR types
-        let mut packages: HashMap<String, IRPackage> = HashMap::new();
+/// Converts AST files to IR schema
+pub struct AstToIrConverter;
+
+impl AstToIrConverter {
+    pub fn new() -> Self {
+        Self
+    }
+
+    /// Convert multiple AST files to a single IR schema
+    pub fn convert_files(self, files: &[AstFile]) -> Result<IRSchema> {
+        // First pass: which package declares which type names. Both maps are
+        // needed: `declared` answers "is this name local", `owners` answers
+        // "where else could this name have come from" for error messages.
+        let mut declared: BTreeMap<String, BTreeSet<String>> = BTreeMap::new();
+        let mut owners: BTreeMap<String, BTreeSet<String>> = BTreeMap::new();
 
         for file in files {
-            let package_name = file
-                .package
-                .iter()
-                .map(|s| s.value.as_str())
-                .collect::<Vec<_>>()
-                .join(".");
+            let package_name = Self::package_name(file);
+            for item in &file.items {
+                let type_name = item.name().to_string();
+                owners
+                    .entry(type_name.clone())
+                    .or_default()
+                    .insert(package_name.clone());
+                declared
+                    .entry(package_name.clone())
+                    .or_default()
+                    .insert(type_name);
+            }
+        }
 
-            let package = packages
+        // Second pass: build IR types, resolving references against each file's
+        // own scope.
+        let mut packages: BTreeMap<String, IRPackage> = BTreeMap::new();
+        let empty = BTreeSet::new();
+
+        for file in files {
+            let package_name = Self::package_name(file);
+            let scope = Scope {
+                package: &package_name,
+                declared: declared.get(&package_name).unwrap_or(&empty),
+                imports: Self::imports(file, &owners)?,
+                owners: &owners,
+            };
+
+            let mut converted = Vec::with_capacity(file.items.len());
+            for item in &file.items {
+                converted.push(Self::convert_item(item, &scope)?);
+            }
+
+            packages
                 .entry(package_name.clone())
                 .or_insert_with(|| IRPackage {
                     name: package_name,
                     types: Vec::new(),
-                });
-
-            for item in &file.items {
-                let ir_type = self.convert_item(item)?;
-                package.types.push(ir_type);
-            }
+                })
+                .types
+                .extend(converted);
         }
 
         Ok(IRSchema { packages })
     }
 
-    fn collect_type_names(&mut self, files: &[AstFile]) {
-        for file in files {
-            for item in &file.items {
-                let type_name = match item {
-                    AstItem::Struct(s) => s.name.value.clone(),
-                    AstItem::Enum(e) => e.name.value.clone(),
-                    AstItem::Union(u) => u.name.value.clone(),
-                    AstItem::TypeAlias(t) => t.name.value.clone(),
-                };
-                self.all_type_names.insert(type_name);
+    fn package_name(file: &AstFile) -> String {
+        file.package
+            .iter()
+            .map(|s| s.value.as_str())
+            .collect::<Vec<_>>()
+            .join(".")
+    }
+
+    /// Build a file's import table from its `use` statements.
+    ///
+    /// `use a.b.Type;` is split at the last segment: `a.b` is the package and
+    /// `Type` the name. An import that names a type the package does not
+    /// declare is rejected here rather than surfacing later as a confusing
+    /// unresolved reference.
+    fn imports(
+        file: &AstFile,
+        owners: &BTreeMap<String, BTreeSet<String>>,
+    ) -> Result<BTreeMap<String, String>> {
+        let mut imports: BTreeMap<String, String> = BTreeMap::new();
+
+        for use_stmt in &file.uses {
+            let segments: Vec<&str> = use_stmt.path.iter().map(|s| s.value.as_str()).collect();
+            let Some((name, package_segments)) = segments.split_last() else {
+                continue;
+            };
+            if package_segments.is_empty() {
+                return Err(anyhow!(
+                    "Import '{}' has no package. Write 'use <package>.{name};'.",
+                    segments.join(".")
+                ));
+            }
+            let package = package_segments.join(".");
+
+            match owners.get(*name) {
+                Some(packages) if packages.contains(&package) => {}
+                Some(packages) => {
+                    return Err(anyhow!(
+                        "Import 'use {package}.{name};' does not match any declaration. \
+                         '{name}' is declared in {}.",
+                        packages
+                            .iter()
+                            .map(|p| format!("'{p}'"))
+                            .collect::<Vec<_>>()
+                            .join(" and ")
+                    ))
+                }
+                None => {
+                    return Err(anyhow!(
+                        "Import 'use {package}.{name};' refers to an unknown type '{name}'."
+                    ))
+                }
+            }
+
+            if let Some(existing) = imports.insert(name.to_string(), package.clone()) {
+                if existing != package {
+                    return Err(anyhow!(
+                        "'{name}' is imported from both '{existing}' and '{package}'. \
+                         A file can import only one type per name."
+                    ));
+                }
             }
         }
+
+        Ok(imports)
     }
 
-    fn convert_item(&self, item: &AstItem) -> Result<IRType> {
+    fn convert_item(item: &AstItem, scope: &Scope) -> Result<IRType> {
         match item {
-            AstItem::Struct(s) => self.convert_struct(s),
-            AstItem::Enum(e) => self.convert_enum(e),
-            AstItem::Union(u) => self.convert_union(u),
-            AstItem::TypeAlias(t) => self.convert_type_alias(t),
+            AstItem::Struct(s) => Self::convert_struct(s, scope),
+            AstItem::Enum(e) => Self::convert_enum(e),
+            AstItem::Union(u) => Self::convert_union(u, scope),
+            AstItem::TypeAlias(t) => Self::convert_type_alias(t, scope),
         }
     }
 
-    fn convert_struct(&self, ast_struct: &AstStruct) -> Result<IRType> {
+    fn convert_struct(ast_struct: &AstStruct, scope: &Scope) -> Result<IRType> {
         let fields = ast_struct
             .fields
             .iter()
-            .map(|f| self.convert_field(f))
-            .collect();
+            .map(|f| Self::convert_field(f, scope))
+            .collect::<Result<Vec<_>>>()?;
 
         // Extract attributes
-        let deny_unknown_fields = self.has_attr(&ast_struct.attrs, "deny_unknown_fields");
+        let deny_unknown_fields = Self::has_attr(&ast_struct.attrs, "deny_unknown_fields");
 
         Ok(IRType::Struct(IRStruct {
             name: ast_struct.name.value.clone(),
@@ -99,7 +232,7 @@ impl AstToIrConverter {
         }))
     }
 
-    fn convert_enum(&self, ast_enum: &AstEnum) -> Result<IRType> {
+    fn convert_enum(ast_enum: &AstEnum) -> Result<IRType> {
         let variants = ast_enum
             .variants
             .iter()
@@ -116,21 +249,19 @@ impl AstToIrConverter {
         }))
     }
 
-    fn convert_union(&self, ast_union: &AstUnion) -> Result<IRType> {
+    fn convert_union(ast_union: &AstUnion, scope: &Scope) -> Result<IRType> {
         // Get tag field name from attributes or default to "type"
-        let tag_field = self
-            .get_attr_value(&ast_union.attrs, "type_tag")
+        let tag_field = Self::get_attr_value(&ast_union.attrs, "type_tag")
             .unwrap_or_else(|| "type".to_string());
 
         // Get content field name from attributes or default to "value"
-        let content_field = self
-            .get_attr_value(&ast_union.attrs, "content_tag")
+        let content_field = Self::get_attr_value(&ast_union.attrs, "content_tag")
             .unwrap_or_else(|| "value".to_string());
 
         let variants: Result<Vec<_>> = ast_union
             .variants
             .iter()
-            .map(|v| self.convert_union_variant(v))
+            .map(|v| Self::convert_union_variant(v, scope))
             .collect();
 
         Ok(IRType::Union(IRUnion {
@@ -142,12 +273,12 @@ impl AstToIrConverter {
         }))
     }
 
-    fn convert_union_variant(&self, variant: &AstUnionVariant) -> Result<IRUnionVariant> {
+    fn convert_union_variant(variant: &AstUnionVariant, scope: &Scope) -> Result<IRUnionVariant> {
         match &variant.inner_type {
             Some(inner_type) => {
                 // Convert the inner type to IRFieldType
                 let ast_type = AstType::Named(inner_type.clone());
-                let field_type = self.convert_ast_type(&ast_type);
+                let field_type = Self::convert_ast_type(&ast_type, scope)?;
                 Ok(IRUnionVariant::Newtype {
                     name: variant.name.value.clone(),
                     ty: field_type,
@@ -161,15 +292,15 @@ impl AstToIrConverter {
         }
     }
 
-    fn convert_type_alias(&self, type_alias: &AstTypeAlias) -> Result<IRType> {
+    fn convert_type_alias(type_alias: &AstTypeAlias, scope: &Scope) -> Result<IRType> {
         let target = match &type_alias.target {
             AstType::Vec(inner) => {
-                let item_type = self.convert_ast_type(inner);
+                let item_type = Self::convert_ast_type(inner, scope)?;
                 IRTypeAliasTarget::List(item_type)
             }
             AstType::Map(key, value) => {
-                let key_type = self.convert_ast_type(key);
-                let value_type = self.convert_ast_type(value);
+                let key_type = Self::convert_ast_type(key, scope)?;
+                let value_type = Self::convert_ast_type(value, scope)?;
                 IRTypeAliasTarget::Map(key_type, value_type)
             }
             AstType::Named(_) | AstType::Option(_) => {
@@ -184,26 +315,26 @@ impl AstToIrConverter {
         }))
     }
 
-    fn convert_field(&self, field: &AstField) -> IRField {
-        let field_type = self.convert_ast_type(&field.ty);
+    fn convert_field(field: &AstField, scope: &Scope) -> Result<IRField> {
+        let field_type = Self::convert_ast_type(&field.ty, scope)?;
 
         // Extract attributes
-        let is_boxed = self.has_attr(&field.attrs, "box");
-        let rename = self.get_attr_value(&field.attrs, "rename");
-        let alias = self.get_attr_values(&field.attrs, "alias");
-        let default = self.get_attr_value(&field.attrs, "default");
-        let skip_if_none = self.has_attr(&field.attrs, "skip_if_none");
-        let skip_if_default = self.has_attr(&field.attrs, "skip_if_default");
-        let flatten = self.has_attr(&field.attrs, "flatten");
-        let deprecated = self.has_attr(&field.attrs, "deprecated");
+        let is_boxed = Self::has_attr(&field.attrs, "box");
+        let rename = Self::get_attr_value(&field.attrs, "rename");
+        let alias = Self::get_attr_values(&field.attrs, "alias");
+        let default = Self::get_attr_value(&field.attrs, "default");
+        let skip_if_none = Self::has_attr(&field.attrs, "skip_if_none");
+        let skip_if_default = Self::has_attr(&field.attrs, "skip_if_default");
+        let flatten = Self::has_attr(&field.attrs, "flatten");
+        let deprecated = Self::has_attr(&field.attrs, "deprecated");
 
         // Determine if optional
         let (is_optional, final_type) = match &field.ty {
-            AstType::Option(inner) => (true, self.convert_ast_type(inner)),
+            AstType::Option(inner) => (true, Self::convert_ast_type(inner, scope)?),
             AstType::Named(_) | AstType::Vec(_) | AstType::Map(..) => (false, field_type),
         };
 
-        IRField {
+        Ok(IRField {
             name: field.name.value.clone(),
             field_type: final_type,
             is_optional,
@@ -216,35 +347,35 @@ impl AstToIrConverter {
             skip_if_default,
             flatten,
             deprecated,
-        }
+        })
     }
 
-    fn convert_ast_type(&self, ast_type: &AstType) -> IRFieldType {
+    fn convert_ast_type(ast_type: &AstType, scope: &Scope) -> Result<IRFieldType> {
         match ast_type {
             AstType::Named(name) => {
                 let type_name = &name.value;
                 if type_name == "Any" {
-                    IRFieldType::Any
-                } else if let Some(primitive) = self.parse_primitive(type_name) {
-                    IRFieldType::Primitive(primitive)
+                    Ok(IRFieldType::Any)
+                } else if let Some(primitive) = Self::parse_primitive(type_name) {
+                    Ok(IRFieldType::Primitive(primitive))
                 } else {
-                    IRFieldType::Custom(type_name.clone())
+                    Ok(IRFieldType::Custom(scope.resolve(type_name)?))
                 }
             }
-            AstType::Option(inner) => self.convert_ast_type(inner),
+            AstType::Option(inner) => Self::convert_ast_type(inner, scope),
             AstType::Vec(inner) => {
-                let inner_type = self.convert_ast_type(inner);
-                IRFieldType::List(Box::new(inner_type))
+                let inner_type = Self::convert_ast_type(inner, scope)?;
+                Ok(IRFieldType::List(Box::new(inner_type)))
             }
             AstType::Map(key, value) => {
-                let key_type = self.convert_ast_type(key);
-                let value_type = self.convert_ast_type(value);
-                IRFieldType::Map(Box::new(key_type), Box::new(value_type))
+                let key_type = Self::convert_ast_type(key, scope)?;
+                let value_type = Self::convert_ast_type(value, scope)?;
+                Ok(IRFieldType::Map(Box::new(key_type), Box::new(value_type)))
             }
         }
     }
 
-    fn parse_primitive(&self, s: &str) -> Option<IRPrimitive> {
+    fn parse_primitive(s: &str) -> Option<IRPrimitive> {
         match s {
             "String" => Some(IRPrimitive::String),
             "bool" => Some(IRPrimitive::Bool),
@@ -270,18 +401,18 @@ impl AstToIrConverter {
         }
     }
 
-    fn has_attr(&self, attrs: &[AstAttribute], name: &str) -> bool {
+    fn has_attr(attrs: &[AstAttribute], name: &str) -> bool {
         attrs.iter().any(|a| a.name.value == name)
     }
 
-    fn get_attr_value(&self, attrs: &[AstAttribute], name: &str) -> Option<String> {
+    fn get_attr_value(attrs: &[AstAttribute], name: &str) -> Option<String> {
         attrs
             .iter()
             .find(|a| a.name.value == name)
             .and_then(|a| a.value.as_ref().map(|v| v.value.clone()))
     }
 
-    fn get_attr_values(&self, attrs: &[AstAttribute], name: &str) -> Vec<String> {
+    fn get_attr_values(attrs: &[AstAttribute], name: &str) -> Vec<String> {
         attrs
             .iter()
             .filter(|a| a.name.value == name)
