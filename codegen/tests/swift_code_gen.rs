@@ -1,11 +1,11 @@
-use std::collections::HashMap;
+use std::collections::BTreeMap;
 use std::sync::Arc;
 
 use fluorite_codegen::code_gen::{
     fs::MemoryFileSystem,
     ir::{
         IREnum, IREnumVariant, IRField, IRFieldType, IRPackage, IRPrimitive, IRSchema, IRStruct,
-        IRType, IRTypeAlias, IRTypeAliasTarget, IRUnion, IRUnionVariant,
+        IRType, IRTypeAlias, IRTypeAliasTarget, IRTypeRef, IRUnion, IRUnionVariant,
     },
     swift::{SwiftOptions, SwiftTemplateGenerator, SwiftVisibility},
 };
@@ -317,7 +317,7 @@ fn test_swift_any_type() -> anyhow::Result<()> {
 // Helper functions to create test schemas
 
 fn create_test_schema() -> IRSchema {
-    let mut packages = HashMap::new();
+    let mut packages = BTreeMap::new();
 
     // Users package
     let users_pkg = IRPackage {
@@ -428,7 +428,7 @@ fn create_test_schema() -> IRSchema {
                     },
                     IRUnionVariant::Newtype {
                         name: "PostCode".to_string(),
-                        ty: IRFieldType::Custom("PostCodeData".to_string()),
+                        ty: IRFieldType::Custom(IRTypeRef::new("test.orders", "PostCodeData")),
                         doc: None,
                     },
                 ],
@@ -455,14 +455,17 @@ fn create_test_schema() -> IRSchema {
             }),
             IRType::TypeAlias(IRTypeAlias {
                 name: "OrderList".to_string(),
-                target: IRTypeAliasTarget::List(IRFieldType::Custom("Order".to_string())),
+                target: IRTypeAliasTarget::List(IRFieldType::Custom(IRTypeRef::new(
+                    "test.orders",
+                    "Order",
+                ))),
                 doc: None,
             }),
             IRType::TypeAlias(IRTypeAlias {
                 name: "OrderMap".to_string(),
                 target: IRTypeAliasTarget::Map(
                     IRFieldType::Primitive(IRPrimitive::String),
-                    IRFieldType::Custom("Order".to_string()),
+                    IRFieldType::Custom(IRTypeRef::new("test.orders", "Order")),
                 ),
                 doc: None,
             }),
@@ -476,7 +479,7 @@ fn create_test_schema() -> IRSchema {
 }
 
 fn create_simple_schema() -> IRSchema {
-    let mut packages = HashMap::new();
+    let mut packages = BTreeMap::new();
 
     let pkg = IRPackage {
         name: "simple".to_string(),
@@ -522,7 +525,7 @@ fn create_simple_schema() -> IRSchema {
 }
 
 fn create_schema_with_rename() -> IRSchema {
-    let mut packages = HashMap::new();
+    let mut packages = BTreeMap::new();
 
     let pkg = IRPackage {
         name: "simple".to_string(),
@@ -568,7 +571,7 @@ fn create_schema_with_rename() -> IRSchema {
 }
 
 fn create_schema_with_primitives() -> IRSchema {
-    let mut packages = HashMap::new();
+    let mut packages = BTreeMap::new();
 
     let pkg = IRPackage {
         name: "simple".to_string(),
@@ -768,7 +771,7 @@ fn create_schema_with_primitives() -> IRSchema {
 }
 
 fn create_schema_with_any() -> IRSchema {
-    let mut packages = HashMap::new();
+    let mut packages = BTreeMap::new();
 
     let pkg = IRPackage {
         name: "simple".to_string(),

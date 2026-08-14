@@ -189,6 +189,19 @@ struct User {
 }
 ```
 
+A type name resolves to the file's own package first, then to that file's `use` imports. Referring to a type from another package without importing it is an error, so two packages can safely declare the same type name:
+
+```rust
+// runtime.fl
+package runtime;
+
+use runtime.vendor.RequestFailed;   // without this, `RequestFailed` below is an error
+
+struct RuntimeEvent {
+    failure: RequestFailed,
+}
+```
+
 ### Doc Comments
 
 Lines starting with `///` become doc comments in Rust, JSDoc comments in TypeScript, and documentation comments in Swift:

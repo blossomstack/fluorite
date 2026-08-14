@@ -9,7 +9,7 @@ use crate::code_gen::doc::slash_doc_lines;
 use crate::code_gen::fs::FileSystem;
 use crate::code_gen::ir::{
     IRField, IRFieldType, IRPrimitive, IRSchema, IRStruct, IRType, IRTypeAlias, IRTypeAliasTarget,
-    IRUnion, IRUnionVariant,
+    IRTypeRef, IRUnion, IRUnionVariant,
 };
 use crate::code_gen::utils::to_snake_case;
 use crate::code_gen::validation::{ValidationError, Validator};
@@ -41,18 +41,13 @@ impl RustTemplateGenerator {
 
         // Generate code for each package
         for (package_name, package) in &schema.packages {
-            self.generate_package(package_name, &package.types, schema)?;
+            self.generate_package(package_name, &package.types)?;
         }
 
         Ok(())
     }
 
-    fn generate_package(
-        &self,
-        package_name: &str,
-        types: &[IRType],
-        schema: &IRSchema,
-    ) -> Result<()> {
+    fn generate_package(&self, package_name: &str, types: &[IRType]) -> Result<()> {
         let package_path = package_name.replace('.', "/");
         let output_path = format!("{}/{}", self.options.output_dir, package_path);
 
@@ -64,7 +59,7 @@ impl RustTemplateGenerator {
             let mut content = String::new();
 
             for ir_type in types.iter() {
-                content.push_str(&self.render_type(ir_type, schema)?);
+                content.push_str(&self.render_type(ir_type)?);
             }
 
             self.fs.write_file(&mod_path, content.as_bytes())?;
@@ -75,7 +70,7 @@ impl RustTemplateGenerator {
             for ir_type in types.iter() {
                 let file_name = to_snake_case(ir_type.name());
                 let file_path = format!("{}/{}.rs", output_path, file_name);
-                let content = self.render_type(ir_type, schema)?;
+                let content = self.render_type(ir_type)?;
 
                 self.fs.write_file(&file_path, content.as_bytes())?;
                 modules.push(ModuleEntry { file_name });
@@ -94,20 +89,20 @@ impl RustTemplateGenerator {
         Ok(())
     }
 
-    fn render_type(&self, ir_type: &IRType, schema: &IRSchema) -> Result<String> {
+    fn render_type(&self, ir_type: &IRType) -> Result<String> {
         match ir_type {
-            IRType::Struct(s) => self.render_struct(s, schema),
+            IRType::Struct(s) => self.render_struct(s),
             IRType::Enum(e) => self.render_enum(e),
-            IRType::Union(u) => self.render_union(u, schema),
-            IRType::TypeAlias(a) => self.render_type_alias(a, schema),
+            IRType::Union(u) => self.render_union(u),
+            IRType::TypeAlias(a) => self.render_type_alias(a),
         }
     }
 
-    fn render_struct(&self, s: &IRStruct, schema: &IRSchema) -> Result<String> {
+    fn render_struct(&self, s: &IRStruct) -> Result<String> {
         let fields: Vec<FieldTemplate> = s
             .fields
             .iter()
-            .map(|f| self.convert_field(f, schema))
+            .map(|f| self.convert_field(f))
             .collect::<Result<Vec<_>>>()?;
 
         let template = StructTemplate {
@@ -139,11 +134,11 @@ impl RustTemplateGenerator {
         Ok(template.render()?)
     }
 
-    fn render_union(&self, u: &IRUnion, schema: &IRSchema) -> Result<String> {
+    fn render_union(&self, u: &IRUnion) -> Result<String> {
         let variants: Vec<UnionVariantTemplate> = u
             .variants
             .iter()
-            .map(|v| self.convert_union_variant(v, schema))
+            .map(|v| self.convert_union_variant(v))
             .collect::<Result<Vec<_>>>()?;
 
         let template = UnionTemplate {
@@ -158,12 +153,12 @@ impl RustTemplateGenerator {
         Ok(template.render()?)
     }
 
-    fn render_type_alias(&self, a: &IRTypeAlias, schema: &IRSchema) -> Result<String> {
+    fn render_type_alias(&self, a: &IRTypeAlias) -> Result<String> {
         match &a.target {
             IRTypeAliasTarget::List(item_type) => {
                 let template = ListAliasTemplate {
                     name: a.name.clone(),
-                    item_type: self.format_type(item_type, schema)?,
+                    item_type: self.format_type(item_type)?,
                     doc: slash_doc_lines(a.doc.as_deref()),
                 };
                 Ok(template.render()?)
@@ -171,8 +166,8 @@ impl RustTemplateGenerator {
             IRTypeAliasTarget::Map(key_type, value_type) => {
                 let template = MapAliasTemplate {
                     name: a.name.clone(),
-                    key_type: self.format_type(key_type, schema)?,
-                    value_type: self.format_type(value_type, schema)?,
+                    key_type: self.format_type(key_type)?,
+                    value_type: self.format_type(value_type)?,
                     doc: slash_doc_lines(a.doc.as_deref()),
                 };
                 Ok(template.render()?)
@@ -180,8 +175,8 @@ impl RustTemplateGenerator {
         }
     }
 
-    fn convert_field(&self, field: &IRField, schema: &IRSchema) -> Result<FieldTemplate> {
-        let mut type_str = self.format_type(&field.field_type, schema)?;
+    fn convert_field(&self, field: &IRField) -> Result<FieldTemplate> {
+        let mut type_str = self.format_type(&field.field_type)?;
 
         if field.is_boxed {
             type_str = format!("Box<{}>", type_str);
@@ -206,11 +201,7 @@ impl RustTemplateGenerator {
         })
     }
 
-    fn convert_union_variant(
-        &self,
-        variant: &IRUnionVariant,
-        schema: &IRSchema,
-    ) -> Result<UnionVariantTemplate> {
+    fn convert_union_variant(&self, variant: &IRUnionVariant) -> Result<UnionVariantTemplate> {
         let doc = slash_doc_lines(variant.doc());
         match variant {
             IRUnionVariant::Unit { name, .. } => Ok(UnionVariantTemplate::Unit {
@@ -222,7 +213,7 @@ impl RustTemplateGenerator {
                 ty: field_type,
                 ..
             } => {
-                let type_str = self.format_type(field_type, schema)?;
+                let type_str = self.format_type(field_type)?;
                 Ok(UnionVariantTemplate::Newtype {
                     name: name.clone(),
                     type_str,
@@ -232,18 +223,18 @@ impl RustTemplateGenerator {
         }
     }
 
-    fn format_type(&self, field_type: &IRFieldType, schema: &IRSchema) -> Result<String> {
+    fn format_type(&self, field_type: &IRFieldType) -> Result<String> {
         match field_type {
             IRFieldType::Primitive(p) => Ok(self.format_primitive(*p)),
-            IRFieldType::Custom(name) => self.get_fqn_for_custom_type(name, schema),
+            IRFieldType::Custom(type_ref) => Ok(self.get_fqn_for_custom_type(type_ref)),
             IRFieldType::Any => Ok(self.options.any_type.clone()),
             IRFieldType::List(item) => {
-                let item_str = self.format_type(item, schema)?;
+                let item_str = self.format_type(item)?;
                 Ok(format!("Vec<{}>", item_str))
             }
             IRFieldType::Map(key, value) => {
-                let key_str = self.format_type(key, schema)?;
-                let value_str = self.format_type(value, schema)?;
+                let key_str = self.format_type(key)?;
+                let value_str = self.format_type(value)?;
                 Ok(format!(
                     "std::collections::HashMap<{}, {}>",
                     key_str, value_str
@@ -279,18 +270,12 @@ impl RustTemplateGenerator {
         }
     }
 
-    fn get_fqn_for_custom_type(&self, type_name: &str, schema: &IRSchema) -> Result<String> {
-        // Find the type in schema to get its package
-        for (package_name, package) in &schema.packages {
-            for ir_type in &package.types {
-                if ir_type.name() == type_name {
-                    let package_path = package_name.replace('.', "::");
-                    return Ok(format!("crate::{}::{}", package_path, type_name));
-                }
-            }
-        }
-
-        Err(anyhow!("Unknown type: {}", type_name))
+    /// The reference already names its owning package — resolution happened
+    /// while lowering the AST, the only place the referencing file's `use`
+    /// imports were in scope.
+    fn get_fqn_for_custom_type(&self, type_ref: &IRTypeRef) -> String {
+        let package_path = type_ref.package.replace('.', "::");
+        format!("crate::{}::{}", package_path, type_ref.name)
     }
 
     fn format_validation_errors(&self, errors: &[ValidationError]) -> anyhow::Error {

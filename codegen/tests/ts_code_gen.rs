@@ -4,7 +4,7 @@ use fluorite_codegen::code_gen::{
     fs::MemoryFileSystem,
     ir::{
         IREnum, IREnumVariant, IRField, IRFieldType, IRPackage, IRPrimitive, IRSchema, IRStruct,
-        IRType, IRTypeAlias, IRTypeAliasTarget, IRUnion, IRUnionVariant,
+        IRType, IRTypeAlias, IRTypeAliasTarget, IRTypeRef, IRUnion, IRUnionVariant,
     },
     ts::{TsTemplateGenerator, TypeScriptOptions},
 };
@@ -263,7 +263,7 @@ fn test_ts_empty_definition_list() {
 
     let generator = TsTemplateGenerator::new(options, fs.clone());
     let schema = IRSchema {
-        packages: std::collections::HashMap::new(),
+        packages: std::collections::BTreeMap::new(),
     };
     let result = generator.generate_from_schema(&schema);
 
@@ -276,9 +276,9 @@ fn test_ts_empty_definition_list() {
 // ============================================================================
 
 fn create_test_schema() -> IRSchema {
-    use std::collections::HashMap;
+    use std::collections::BTreeMap;
 
-    let mut packages = HashMap::new();
+    let mut packages = BTreeMap::new();
 
     // Users package
     let users_pkg = IRPackage {
@@ -331,7 +331,7 @@ fn create_test_schema() -> IRSchema {
                     },
                     IRField {
                         name: "gender".to_string(),
-                        field_type: IRFieldType::Custom("Gender".to_string()),
+                        field_type: IRFieldType::Custom(IRTypeRef::new("test.users", "Gender")),
                         is_optional: false,
                         is_boxed: false,
                         rename: None,
@@ -406,7 +406,7 @@ fn create_test_schema() -> IRSchema {
                     },
                     IRField {
                         name: "user".to_string(),
-                        field_type: IRFieldType::Custom("User".to_string()),
+                        field_type: IRFieldType::Custom(IRTypeRef::new("test.users", "User")),
                         is_optional: false,
                         is_boxed: false,
                         rename: None,
@@ -420,7 +420,7 @@ fn create_test_schema() -> IRSchema {
                     },
                     IRField {
                         name: "shipping".to_string(),
-                        field_type: IRFieldType::Custom("Shipping".to_string()),
+                        field_type: IRFieldType::Custom(IRTypeRef::new("test.orders", "Shipping")),
                         is_optional: true,
                         is_boxed: true,
                         rename: None,
@@ -469,7 +469,7 @@ fn create_test_schema() -> IRSchema {
                     },
                     IRField {
                         name: "order".to_string(),
-                        field_type: IRFieldType::Custom("Order".to_string()),
+                        field_type: IRFieldType::Custom(IRTypeRef::new("test.orders", "Order")),
                         is_optional: false,
                         is_boxed: false,
                         rename: None,
@@ -483,7 +483,7 @@ fn create_test_schema() -> IRSchema {
                     },
                     IRField {
                         name: "address".to_string(),
-                        field_type: IRFieldType::Custom("Address".to_string()),
+                        field_type: IRFieldType::Custom(IRTypeRef::new("test.orders", "Address")),
                         is_optional: false,
                         is_boxed: false,
                         rename: None,
@@ -511,12 +511,12 @@ fn create_test_schema() -> IRSchema {
                     },
                     IRUnionVariant::Newtype {
                         name: "PostCode".to_string(),
-                        ty: IRFieldType::Custom("PostCodeData".to_string()),
+                        ty: IRFieldType::Custom(IRTypeRef::new("test.orders", "PostCodeData")),
                         doc: None,
                     },
                     IRUnionVariant::Newtype {
                         name: "AddressInfo".to_string(),
-                        ty: IRFieldType::Custom("AddressInfoData".to_string()),
+                        ty: IRFieldType::Custom(IRTypeRef::new("test.orders", "AddressInfoData")),
                         doc: None,
                     },
                 ],
@@ -542,7 +542,7 @@ fn create_test_schema() -> IRSchema {
                     },
                     IRField {
                         name: "order".to_string(),
-                        field_type: IRFieldType::Custom("Order".to_string()),
+                        field_type: IRFieldType::Custom(IRTypeRef::new("test.orders", "Order")),
                         is_optional: false,
                         is_boxed: false,
                         rename: None,
@@ -609,14 +609,17 @@ fn create_test_schema() -> IRSchema {
             }),
             IRType::TypeAlias(IRTypeAlias {
                 name: "OrderList".to_string(),
-                target: IRTypeAliasTarget::List(IRFieldType::Custom("Order".to_string())),
+                target: IRTypeAliasTarget::List(IRFieldType::Custom(IRTypeRef::new(
+                    "test.orders",
+                    "Order",
+                ))),
                 doc: None,
             }),
             IRType::TypeAlias(IRTypeAlias {
                 name: "OrderMap".to_string(),
                 target: IRTypeAliasTarget::Map(
                     IRFieldType::Primitive(IRPrimitive::String),
-                    IRFieldType::Custom("Order".to_string()),
+                    IRFieldType::Custom(IRTypeRef::new("test.orders", "Order")),
                 ),
                 doc: None,
             }),

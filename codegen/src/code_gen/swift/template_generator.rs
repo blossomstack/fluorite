@@ -386,7 +386,7 @@ impl SwiftTemplateGenerator {
     fn format_type(&self, field_type: &IRFieldType, schema: &IRSchema) -> Result<String> {
         match field_type {
             IRFieldType::Primitive(p) => Ok(self.format_primitive(*p)),
-            IRFieldType::Custom(name) => Ok(name.clone()),
+            IRFieldType::Custom(type_ref) => Ok(type_ref.name.clone()),
             IRFieldType::Any => Ok(self.options.any_type.clone()),
             IRFieldType::List(item) => {
                 let item_str = self.format_type(item, schema)?;
@@ -571,9 +571,9 @@ impl SwiftTemplateGenerator {
     ) {
         match field_type {
             IRFieldType::Primitive(_) => {}
-            IRFieldType::Custom(name) => {
-                if package_type_names.contains(name) {
-                    referenced_types.insert(name.clone());
+            IRFieldType::Custom(type_ref) => {
+                if package_type_names.contains(&type_ref.name) {
+                    referenced_types.insert(type_ref.name.clone());
                 }
             }
             IRFieldType::Any => {}
