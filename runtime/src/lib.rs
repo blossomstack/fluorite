@@ -213,3 +213,121 @@ impl<'de> Visitor<'de> for AnyVisitor {
         Ok(Any::Map(m))
     }
 }
+
+/// A byte string that crosses the wire as base64.
+///
+/// A newtype rather than a bare `Vec<u8>` because serde writes `Vec<u8>` as a
+/// JSON array of numbers, and every other fluorite generator says a `Bytes`
+/// field is a base64 string: TypeScript and Go emit `string`, Swift emits
+/// `Data`. A Rust peer emitting `[137,80,78,71]` where a TypeScript peer reads
+/// `"iVBORw=="` does not interoperate, and the array form is about three times
+/// the size.
+///
+/// The newtype also composes: `Option<Bytes>`, `Vec<Bytes>` and
+/// `HashMap<String, Bytes>` all encode correctly with no serde attribute at
+/// the field, which a `#[serde(with = ...)]` helper could only manage with one
+/// module per shape. It follows the same pattern as the other primitives that
+/// map to a dedicated type — `uuid::Uuid`, `rust_decimal::Decimal`,
+/// `url::Url`.
+///
+/// Standard base64 *with* padding, matching Go's `encoding/json` for `[]byte`
+/// and Swift's `Data.base64EncodedString()`.
+#[derive(Debug, Clone, PartialEq, Eq, Hash, Default, PartialOrd, Ord)]
+pub struct Bytes(pub Vec<u8>);
+
+impl Bytes {
+    #[must_use]
+    pub fn new(bytes: Vec<u8>) -> Self {
+        Self(bytes)
+    }
+
+    #[must_use]
+    pub fn into_vec(self) -> Vec<u8> {
+        self.0
+    }
+
+    #[must_use]
+    pub fn as_slice(&self) -> &[u8] {
+        &self.0
+    }
+
+    #[must_use]
+    pub fn len(&self) -> usize {
+        self.0.len()
+    }
+
+    #[must_use]
+    pub fn is_empty(&self) -> bool {
+        self.0.is_empty()
+    }
+}
+
+impl From<Vec<u8>> for Bytes {
+    fn from(v: Vec<u8>) -> Self {
+        Self(v)
+    }
+}
+
+impl From<&[u8]> for Bytes {
+    fn from(v: &[u8]) -> Self {
+        Self(v.to_vec())
+    }
+}
+
+impl From<Bytes> for Vec<u8> {
+    fn from(b: Bytes) -> Self {
+        b.0
+    }
+}
+
+impl AsRef<[u8]> for Bytes {
+    fn as_ref(&self) -> &[u8] {
+        &self.0
+    }
+}
+
+impl std::ops::Deref for Bytes {
+    type Target = [u8];
+
+    fn deref(&self) -> &Self::Target {
+        &self.0
+    }
+}
+
+impl Serialize for Bytes {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
+        use base64::Engine as _;
+        serializer.serialize_str(&base64::engine::general_purpose::STANDARD.encode(&self.0))
+    }
+}
+
+impl<'de> Deserialize<'de> for Bytes {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        use base64::Engine as _;
+        let s = String::deserialize(deserializer)?;
+        base64::engine::general_purpose::STANDARD
+            .decode(s.as_bytes())
+            .map(Bytes)
+            .map_err(|e| D::Error::custom(format!("invalid base64: {e}")))
+    }
+}
+
+#[cfg(feature = "schemars")]
+impl schemars::JsonSchema for Bytes {
+    fn schema_name() -> std::borrow::Cow<'static, str> {
+        "Bytes".into()
+    }
+
+    fn json_schema(_: &mut schemars::SchemaGenerator) -> schemars::Schema {
+        schemars::json_schema!({
+            "type": "string",
+            "contentEncoding": "base64",
+        })
+    }
+}

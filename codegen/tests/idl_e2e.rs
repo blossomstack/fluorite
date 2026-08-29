@@ -161,7 +161,7 @@ fn test_fl_extended_types() {
     // Check that extended types are properly mapped
     assert!(content.contains("uuid::Uuid"));
     assert!(content.contains("rust_decimal::Decimal"));
-    assert!(content.contains("Vec<u8>"));
+    assert!(content.contains("fluorite::Bytes"));
     assert!(content.contains("url::Url"));
 }
 
