@@ -258,7 +258,10 @@ impl RustTemplateGenerator {
             // Extended primitives
             IRPrimitive::UUID => "uuid::Uuid".to_string(),
             IRPrimitive::Decimal => "rust_decimal::Decimal".to_string(),
-            IRPrimitive::Bytes => "Vec<u8>".to_string(),
+            // Not `Vec<u8>`: serde writes that as a JSON array of numbers,
+            // where every other generator emits a base64 string. See
+            // `fluorite::Bytes`.
+            IRPrimitive::Bytes => "fluorite::Bytes".to_string(),
             IRPrimitive::Url => "url::Url".to_string(),
             IRPrimitive::Timestamp => "i64".to_string(),
             IRPrimitive::TimestampMillis => "i64".to_string(),
