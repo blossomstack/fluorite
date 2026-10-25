@@ -301,6 +301,7 @@ dependencies = [
  "fluorite",
  "logos",
  "serde",
+ "serde_json",
 ]
 
 [[package]]

@@ -1,0 +1,22 @@
+package fixture.models;
+use fixture.common.Child;
+enum State { Ready, Waiting }
+#[type_tag = "kind"]
+#[content_tag = "payload"]
+union Event { Added(Child), Empty }
+struct Entry {
+    name: String,
+    count: i32,
+    large: u64,
+    amount: f64,
+    enabled: bool,
+    optional_name: Option<String>,
+    nested: Vec<Vec<Child>>,
+    by_name: Map<String, Child>,
+    state: State,
+    event: Event,
+}
+type EntryList = Vec<Entry>;
+type EntryMap = Map<String, Entry>;
+
+type NumericMap = Map<u32, String>;

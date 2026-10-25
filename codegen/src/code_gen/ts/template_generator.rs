@@ -39,6 +39,17 @@ impl TsTemplateGenerator {
             return Err(self.format_validation_errors(&errors));
         }
 
+        if self.options.runtime_decoders
+            && schema.packages.values().any(|p| {
+                p.types
+                    .iter()
+                    .any(|t| to_camel_case(t.name()) == "decoders")
+            })
+        {
+            return Err(anyhow!(
+                "The type name Decoders conflicts with the generated decoders.ts file"
+            ));
+        }
         // Generate code for each package
         for (package_name, package) in &schema.packages {
             // Use override if provided, otherwise use the package name from schema
@@ -60,10 +71,16 @@ impl TsTemplateGenerator {
             let index_path = format!("{}/index.ts", output_path);
             let mut content = String::new();
 
+            let mut seen_imports = std::collections::HashSet::new();
             // In single-file mode, we still need cross-package imports
             for ir_type in types.iter() {
                 // Single file: same-package types need no import.
-                content.push_str(&self.render_type(ir_type, package_name, false)?);
+                for line in self.render_type(ir_type, package_name, false)?.lines() {
+                    if !line.starts_with("import ") || seen_imports.insert(line.to_owned()) {
+                        content.push_str(line);
+                        content.push('\n');
+                    }
+                }
             }
 
             self.fs.write_file(&index_path, content.as_bytes())?;
@@ -87,6 +104,11 @@ impl TsTemplateGenerator {
             self.fs.write_file(&index_path, index_content.as_bytes())?;
         }
 
+        if self.options.runtime_decoders {
+            let content = super::decoders::render(package_name, types)?;
+            self.fs
+                .write_file(&format!("{}/decoders.ts", output_path), content.as_bytes())?;
+        }
         Ok(())
     }
 

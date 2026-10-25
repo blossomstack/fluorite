@@ -7,6 +7,7 @@ pub struct TypeScriptOptions {
     pub package_name: Option<String>, // Override package directory name
     pub any_type: String,
     pub use_readonly: bool,
+    pub runtime_decoders: bool,
 }
 
 impl TypeScriptOptions {
@@ -17,7 +18,13 @@ impl TypeScriptOptions {
             package_name: None,
             any_type: "unknown".to_owned(),
             use_readonly: false,
+            runtime_decoders: false,
         }
+    }
+
+    pub fn with_runtime_decoders(mut self, enabled: bool) -> Self {
+        self.runtime_decoders = enabled;
+        self
     }
 
     pub fn with_single_file(mut self, single_file: bool) -> Self {

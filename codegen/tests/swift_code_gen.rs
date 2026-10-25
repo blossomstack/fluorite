@@ -815,3 +815,28 @@ fn create_schema_with_any() -> IRSchema {
     packages.insert("simple".to_string(), pkg);
     IRSchema { packages }
 }
+
+#[test]
+fn swift_initializers_match_type_visibility() -> anyhow::Result<()> {
+    for visibility in [
+        SwiftVisibility::Public,
+        SwiftVisibility::Internal,
+        SwiftVisibility::Package,
+    ] {
+        let fs = Arc::new(MemoryFileSystem::new());
+        let options = SwiftOptions::new("/output".into()).with_visibility(visibility.clone());
+        SwiftTemplateGenerator::new(options, fs.clone())
+            .generate_from_schema(&create_test_schema())?;
+        let output = fs.get_string("/output/test/users/User.swift").unwrap();
+        let prefix = match visibility {
+            SwiftVisibility::Public => "public",
+            SwiftVisibility::Internal => "internal",
+            SwiftVisibility::Package => "package",
+        };
+        assert!(output.contains(&format!(
+            "{prefix} init(firstName: String, lastName: String"
+        )));
+        assert!(output.contains("self.firstName = firstName"));
+    }
+    Ok(())
+}
