@@ -150,7 +150,7 @@ pub(super) fn render(package: &str, types: &[IRType]) -> Result<String> {
         }
         body.push_str(&format!("  return value as models.{name};\n}}\n"));
     }
-    let mut header="// Generated runtime wire decoders. Do not edit.\nimport type * as models from './index';\n".to_string();
+    let mut header="// Generated runtime wire decoders. Do not edit.\nimport type * as models from './index.js';\n".to_string();
     for target in ctx.imports {
         let from: Vec<_> = package.split('.').collect();
         let to: Vec<_> = target.split('.').collect();
@@ -158,7 +158,7 @@ pub(super) fn render(package: &str, types: &[IRType]) -> Result<String> {
         let mut parts = vec![".."; from.len() - shared];
         parts.extend_from_slice(&to[shared..]);
         header.push_str(&format!(
-            "import * as p_{} from '{}/decoders';\n",
+            "import * as p_{} from '{}/decoders.js';\n",
             target.replace('.', "_"),
             parts.join("/")
         ));
