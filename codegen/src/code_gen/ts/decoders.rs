@@ -8,6 +8,18 @@ fn quoted(s: &str) -> String {
     serde_json::Value::String(s.to_owned()).to_string()
 }
 
+// Encode every UTF-8 byte so distinct package paths cannot share an identifier.
+// Replacing separators alone would conflate e.g. a.b and a_b.
+fn package_alias(package: &str) -> String {
+    let mut alias = String::from("p_");
+    for byte in package.bytes() {
+        const HEX: &[u8; 16] = b"0123456789abcdef";
+        alias.push(char::from(HEX[usize::from(byte >> 4)]));
+        alias.push(char::from(HEX[usize::from(byte & 15)]));
+    }
+    alias
+}
+
 struct Context<'a> {
     package: &'a str,
     imports: BTreeSet<String>,
@@ -36,7 +48,7 @@ impl Context<'_> {
                     String::new()
                 } else {
                     self.imports.insert(r.package.clone());
-                    format!("p_{}.", r.package.replace('.', "_"))
+                    format!("{}.", package_alias(&r.package))
                 };
                 format!("{prefix}decode{}({value}, {path});", r.name)
             }
@@ -97,7 +109,11 @@ pub(super) fn render(package: &str, types: &[IRType]) -> Result<String> {
         ));
         match ty {
             IRType::Struct(s) => {
-                body.push_str("  const record = Wire.object(value, path);\n");
+                if s.fields.is_empty() {
+                    body.push_str("  Wire.object(value, path);\n");
+                } else {
+                    body.push_str("  const record = Wire.object(value, path);\n");
+                }
                 for f in &s.fields {
                     let field = quoted(&to_camel_case(f.rename.as_ref().unwrap_or(&f.name)));
                     let value = format!("record[{field}]");
@@ -166,8 +182,8 @@ pub(super) fn render(package: &str, types: &[IRType]) -> Result<String> {
         let mut parts = vec![".."; from.len() - shared];
         parts.extend_from_slice(&to[shared..]);
         header.push_str(&format!(
-            "import * as p_{} from '{}/decoders.js';\n",
-            target.replace('.', "_"),
+            "import * as {} from '{}/decoders.js';\n",
+            package_alias(&target),
             parts.join("/")
         ));
     }

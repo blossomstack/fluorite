@@ -20,3 +20,14 @@ for (const [key, value] of [['name',1],['count',1.5],['count',2147483648],['larg
 assert.throws(() => d.decodeEntryList({}), TypeError);
 assert.throws(() => d.decodeEntryMap([]), TypeError);
 console.log(`${count + 2} runtime decoder assertions passed`);
+
+const collisions = require(require('node:path').join(require('node:path').dirname(process.argv[2]), '../collisions/decoders.js'));
+const pair = {nested: {count: 3}, flat: {label: 'distinct package'}};
+assert.deepEqual(collisions.decodePair(pair), pair);
+assert.throws(() => collisions.decodePair({...pair, nested: {count: -1}}), TypeError);
+assert.throws(() => collisions.decodePair({...pair, flat: {label: 42}}), TypeError);
+assert.deepEqual(collisions.decodeEmpty({}), {});
+assert.throws(() => collisions.decodeEmpty(null), TypeError);
+assert.throws(() => collisions.decodeEmpty([]), TypeError);
+assert.throws(() => collisions.decodeEmpty(1), TypeError);
+console.log('7 package collision and empty struct assertions passed');

@@ -1,0 +1,5 @@
+package fixture.collisions;
+use a.b.Nested;
+use a_b.Flat;
+struct Pair { nested: Nested, flat: Flat }
+struct Empty {}
