@@ -27,7 +27,7 @@ impl Context<'_> {
                     IRPrimitive::String | IRPrimitive::DateTime | IRPrimitive::UUID | IRPrimitive::Decimal | IRPrimitive::Bytes | IRPrimitive::Url | IRPrimitive::DateTimeUtc | IRPrimitive::DateTimeTz | IRPrimitive::Date | IRPrimitive::Time | IRPrimitive::Duration => format!("typeof {value} === 'string'"),
                 };
                 format!(
-                    "expect({predicate}, {path}, {});",
+                    "Wire.expect({predicate}, {path}, {});",
                     quoted(&format!("{:?}", p))
                 )
             }
@@ -42,7 +42,11 @@ impl Context<'_> {
             }
             IRFieldType::List(item) => {
                 let inner = self.check(item, "item", "itemPath");
-                format!("visitArray({value}, {path}, (item, itemPath) => {{ {inner} }});")
+                if inner.is_empty() {
+                    format!("Wire.array({value}, {path});")
+                } else {
+                    format!("Wire.visitArray({value}, {path}, (item, itemPath) => {{ {inner} }});")
+                }
             }
             IRFieldType::Map(key, item) => {
                 let numeric_key = matches!(
@@ -60,16 +64,20 @@ impl Context<'_> {
                 );
                 let keycheck = if numeric_key {
                     format!(
-                        "expect(key.trim() !== '', itemPath, 'numeric key'); {}",
+                        "Wire.expect(key.trim() !== '', itemPath, 'numeric key'); {}",
                         self.check(key, "Number(key)", "itemPath")
                     )
                 } else {
                     self.check(key, "key", "itemPath")
                 };
                 let inner = self.check(item, "item", "itemPath");
-                format!(
-                    "visitMap({value}, {path}, (key, item, itemPath) => {{ {keycheck} {inner} }});"
-                )
+                if keycheck.is_empty() && inner.is_empty() {
+                    format!("Wire.object({value}, {path});")
+                } else {
+                    let key_name = if keycheck.is_empty() { "_key" } else { "key" };
+                    let item_name = if inner.is_empty() { "_item" } else { "item" };
+                    format!("Wire.visitMap({value}, {path}, ({key_name}, {item_name}, itemPath) => {{ {keycheck} {inner} }});")
+                }
             }
         }
     }
@@ -89,7 +97,7 @@ pub(super) fn render(package: &str, types: &[IRType]) -> Result<String> {
         ));
         match ty {
             IRType::Struct(s) => {
-                body.push_str("  const record = object(value, path);\n");
+                body.push_str("  const record = Wire.object(value, path);\n");
                 for f in &s.fields {
                     let field = quoted(&to_camel_case(f.rename.as_ref().unwrap_or(&f.name)));
                     let value = format!("record[{field}]");
@@ -98,12 +106,12 @@ pub(super) fn render(package: &str, types: &[IRType]) -> Result<String> {
                     if f.is_optional {
                         body.push_str(&format!("  if ({value} !== undefined) {{ {check} }}\n"));
                     } else {
-                        body.push_str(&format!("  expect(Object.hasOwn(record, {field}), {path}, 'required field'); {check}\n"));
+                        body.push_str(&format!("  Wire.expect(Object.hasOwn(record, {field}), {path}, 'required field'); {check}\n"));
                     }
                 }
             }
             IRType::Enum(e) => body.push_str(&format!(
-                "  expect([{}].some(item => item === value), path, 'enum variant');\n",
+                "  Wire.expect([{}].some(item => item === value), path, 'enum variant');\n",
                 e.variants
                     .iter()
                     .map(|v| quoted(&v.name))
@@ -112,7 +120,7 @@ pub(super) fn render(package: &str, types: &[IRType]) -> Result<String> {
             )),
             IRType::Union(u) => {
                 body.push_str(&format!(
-                    "  const record = object(value, path);\n  switch (record[{}]) {{\n",
+                    "  const record = Wire.object(value, path);\n  switch (record[{}]) {{\n",
                     quoted(&u.tag_field)
                 ));
                 for v in &u.variants {
@@ -128,7 +136,7 @@ pub(super) fn render(package: &str, types: &[IRType]) -> Result<String> {
                                 &format!("path + '.' + {field}"),
                             );
                             body.push_str(&format!(
-                                "    case {}: {{ expect(Object.hasOwn(record, {field}), path + '.' + {field}, 'required payload'); {check} break; }}\n",
+                                "    case {}: {{ Wire.expect(Object.hasOwn(record, {field}), path + '.' + {field}, 'required payload'); {check} break; }}\n",
                                 quoted(name)
                             ));
                         }

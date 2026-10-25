@@ -1,0 +1,3 @@
+package fixture.models;
+type AnyList = Vec<Any>;
+type AnyMap = Map<String, Any>;

@@ -6,7 +6,7 @@ root=pathlib.Path(__file__).resolve().parent
 def run(*args): subprocess.run(list(map(str,args)),check=True)
 with tempfile.TemporaryDirectory() as temp:
     out=pathlib.Path(temp)
-    run(a.generator,'swift','--inputs',root,'--output',out/'src','--single-file')
+    run(a.generator,'swift','--inputs',root/'common.fl',root/'models.fl','--output',out/'src','--single-file')
     run('swiftc','-module-cache-path',out/'cache','-emit-module','-module-name','Fixture','-emit-module-path',out/'Fixture.swiftmodule',*sorted((out/'src').rglob('*.swift')))
     (out/'client.swift').write_text('''import Fixture
 let child = Child(count: 3)

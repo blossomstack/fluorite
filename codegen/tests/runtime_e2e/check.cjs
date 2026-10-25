@@ -9,7 +9,10 @@ assert.deepEqual(d.decodeEntryMap({one: valid}), {one: valid});
 assert.deepEqual(d.decodeNumericMap({'12': 'twelve'}), {'12':'twelve'});
 assert.throws(() => d.decodeNumericMap({'-1':'bad'}), TypeError);
 assert.throws(() => d.decodeNumericMap({'bad':'bad'}), TypeError);
-let count = 7;
+assert.deepEqual(d.decodeAnyList([null, 1, 'text']), [null, 1, 'text']);
+assert.throws(() => d.decodeAnyList({}), TypeError);
+assert.deepEqual(d.decodeAnyMap({one: null}), {one: null});
+let count = 10;
 function reject(value, path) { assert.throws(() => d.decodeEntry(value), error => error instanceof TypeError && error.message.includes(path)); count++; }
 reject(null, 'Entry'); reject([], 'Entry');
 for (const key of Object.keys(valid)) { const v = {...valid}; delete v[key]; reject(v, key); }
