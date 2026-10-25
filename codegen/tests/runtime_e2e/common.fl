@@ -1,0 +1,2 @@
+package fixture.common;
+struct Child { count: u32 }

@@ -1,3 +1,4 @@
+mod decoders;
 mod options;
 mod template_generator;
 pub mod templates;

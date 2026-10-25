@@ -483,3 +483,33 @@ make interop-test
 ## License
 
 MIT
+
+### Runtime TypeScript decoders and Swift construction
+
+`fluorite ts --inputs schema/ --output generated/ --runtime-decoders` emits a
+`decoders.ts` beside each package's `index.ts`. Import `decodeUser` (for a `User`
+type) from that file and pass an `unknown` JSON response. It returns the generated
+type or throws a `TypeError` containing the field path. Both output layouts work;
+without the flag, existing type-only generation is unchanged.
+
+Decoders check wire types, required fields, containers, enum/union tags, 32-bit
+integer bounds, safe 64-bit integers and finite floating-point values. They do
+not coerce values, apply domain rules, or validate extended string formats such
+as URLs/UUIDs/dates. Optional fields may be absent, but explicit null is rejected
+because generated TS optional properties do not include null. Unknown properties
+are retained. Inputs must be parsed JSON; decoding does not sanitize arbitrary
+JavaScript objects. Integer values outside JavaScript's safe range are rejected
+rather than silently losing precision. Use ES2022 or newer.
+
+Swift structs now emit initializers with the struct's visibility, allowing
+construction from a separate module. All fields are explicit arguments, including
+optional fields. Codable behavior is unchanged. Timestamp encoding/decoding still
+requires the application's explicit Unix-epoch date strategy.
+
+Executable regression checks (after building the generator and installing the
+existing `codegen/tests/ts_e2e` locked dependencies):
+
+```sh
+python3 codegen/tests/runtime_e2e/run.py --generator target/debug/fluorite --tsc codegen/tests/ts_e2e/node_modules/.bin/tsc
+python3 codegen/tests/runtime_e2e/swift.py --generator target/debug/fluorite
+```

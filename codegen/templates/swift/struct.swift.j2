@@ -18,6 +18,12 @@ import Foundation
 {%- endif %}
     {{ visibility }} let {{ field.code_name }}: {{ field.type_str|safe }}
 {%- endfor %}
+
+    {{ visibility }} init({% for field in fields %}{{ field.code_name }}: {{ field.type_str|safe }}{% if !loop.last %}, {% endif %}{% endfor %}) {
+{%- for field in fields %}
+        self.{{ field.code_name }} = {{ field.code_name }}
+{%- endfor %}
+    }
 {%- if needs_coding_keys %}
 
     enum CodingKeys: String, CodingKey {

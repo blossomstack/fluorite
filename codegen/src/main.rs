@@ -93,6 +93,10 @@ enum Commands {
         #[arg(long, default_value = "false")]
         single_file: bool,
 
+        /// Generate dependency-free runtime JSON decoders in decoders.ts
+        #[arg(long, default_value = "false")]
+        runtime_decoders: bool,
+
         /// Custom type to use for 'Any' fields (default: unknown)
         #[arg(long, default_value = "unknown")]
         any_type: String,
@@ -226,6 +230,7 @@ fn main() -> anyhow::Result<()> {
             output,
             single_file,
             any_type,
+            runtime_decoders,
             readonly,
             package_name,
         } => {
@@ -235,6 +240,7 @@ fn main() -> anyhow::Result<()> {
             // Build options
             let mut options = code_gen::ts::TypeScriptOptions::new(output)
                 .with_single_file(single_file)
+                .with_runtime_decoders(runtime_decoders)
                 .with_any_type(&any_type)
                 .with_readonly(readonly);
 

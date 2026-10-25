@@ -1,0 +1,2 @@
+package a_b;
+struct Flat { label: String }
