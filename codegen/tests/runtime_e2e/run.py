@@ -10,3 +10,11 @@ for single, strict in [(single, strict) for single in [False, True] for strict i
         run(a.generator,'ts','--inputs',root,'--output',out/'src','--runtime-decoders',*(['--single-file'] if single else []), *(['--reject-unknown-fields'] if strict else []))
         run(a.tsc,'--target','ES2022','--module','commonjs','--strict','--noUnusedLocals','--noUnusedParameters','--skipLibCheck','--rootDir',out/'src','--outDir',out/'dist',*sorted((out/'src').rglob('*.ts')))
         run('node',root/'check.cjs',out/'dist/fixture/models/decoders.js', str(strict))
+
+        # Compile and execute native Node ESM too: CommonJS tolerates directory
+        # imports and therefore cannot catch broken generated ESM specifiers.
+        (out/'package.json').write_text('{"type":"module"}')
+        run(a.tsc,'--target','ES2022','--module','NodeNext','--moduleResolution','NodeNext','--strict','--verbatimModuleSyntax','--noUnusedLocals','--noUnusedParameters','--skipLibCheck','--rootDir',out/'src','--outDir',out/'esm',*sorted((out/'src').rglob('*.ts')))
+        probe=out/'probe.mjs'
+        probe.write_text("import './esm/fixture/esm/index.js'; import {decodeEnvelope} from './esm/fixture/esm/decoders.js'; import assert from 'node:assert/strict'; assert.deepEqual(decodeEnvelope({edition:{language:'Mandarin'}}),{edition:{language:'Mandarin'}}); assert.throws(()=>decodeEnvelope({edition:{language:'Invented'}}));")
+        run('node',probe)
