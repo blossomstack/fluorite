@@ -97,7 +97,13 @@ impl TsTemplateGenerator {
                 let content = self.render_type(ir_type, package_name, true)?;
 
                 self.fs.write_file(&file_path, content.as_bytes())?;
-                modules.push(TsModuleEntry { file_name });
+                modules.push(TsModuleEntry {
+                    file_name: if self.options.runtime_decoders {
+                        format!("{file_name}.js")
+                    } else {
+                        file_name
+                    },
+                });
             }
 
             // Generate index.ts
@@ -541,7 +547,15 @@ impl TsTemplateGenerator {
         for name in same_package_types {
             imports.push(TsImport {
                 name: name.clone(),
-                path: format!("./{}", to_camel_case(&name)),
+                path: format!(
+                    "./{}{}",
+                    to_camel_case(&name),
+                    if self.options.runtime_decoders {
+                        ".js"
+                    } else {
+                        ""
+                    }
+                ),
             });
         }
 
@@ -550,7 +564,11 @@ impl TsTemplateGenerator {
             let relative_path = self.calculate_relative_path(current_package, &source_pkg);
             imports.push(TsImport {
                 name,
-                path: relative_path,
+                path: if self.options.runtime_decoders {
+                    format!("{relative_path}/index.js")
+                } else {
+                    relative_path
+                },
             });
         }
 

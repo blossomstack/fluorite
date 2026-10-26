@@ -1,2 +1,4 @@
 package fixture.common;
 struct Child { count: u32 }
+
+enum Language { English, Mandarin }

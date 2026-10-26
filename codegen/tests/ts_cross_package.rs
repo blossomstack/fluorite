@@ -57,7 +57,7 @@ fn test_cross_package_import_in_struct() {
 
     // Should have cross-package import for Address
     assert!(
-        user_content.contains("import { Address }"),
+        user_content.contains("import type { Address }"),
         "Should import Address. Got:\n{}",
         user_content
     );
@@ -94,7 +94,7 @@ fn test_cross_package_import_in_union() {
         .expect("event.ts should exist");
 
     assert!(
-        event_content.contains("import { Payload }"),
+        event_content.contains("import type { Payload }"),
         "Should import Payload. Got:\n{}",
         event_content
     );
@@ -129,7 +129,7 @@ fn test_cross_package_import_in_type_alias() {
         .expect("userList.ts should exist");
 
     assert!(
-        user_list_content.contains("import { User }"),
+        user_list_content.contains("import type { User }"),
         "Should import User. Got:\n{}",
         user_list_content
     );
@@ -139,7 +139,7 @@ fn test_cross_package_import_in_type_alias() {
         .expect("userMap.ts should exist");
 
     assert!(
-        user_map_content.contains("import { User }"),
+        user_map_content.contains("import type { User }"),
         "Should import User. Got:\n{}",
         user_map_content
     );
@@ -178,12 +178,12 @@ fn test_multiple_cross_package_imports() {
 
     // Should have imports for both cross-package types
     assert!(
-        order_content.contains("import { Address }"),
+        order_content.contains("import type { Address }"),
         "Should import Address. Got:\n{}",
         order_content
     );
     assert!(
-        order_content.contains("import { User }"),
+        order_content.contains("import type { User }"),
         "Should import User. Got:\n{}",
         order_content
     );
@@ -222,7 +222,7 @@ fn test_same_package_import_still_works() {
 
     // Same-package import uses ./
     assert!(
-        user_content.contains("import { Address } from './address'"),
+        user_content.contains("import type { Address } from './address'"),
         "Should have same-package import. Got:\n{}",
         user_content
     );
@@ -255,7 +255,7 @@ fn test_nested_package_relative_path() {
 
     // Should navigate up 3 levels (c/d/deep -> common)
     assert!(
-        deep_content.contains("import { Shared }"),
+        deep_content.contains("import type { Shared }"),
         "Should import Shared. Got:\n{}",
         deep_content
     );

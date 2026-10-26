@@ -1,0 +1,4 @@
+package fixture.esm;
+use fixture.common.Language;
+struct Edition { language: Language }
+struct Envelope { edition: Edition }

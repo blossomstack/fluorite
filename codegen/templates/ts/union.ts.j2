@@ -1,6 +1,6 @@
 {%- if !imports.is_empty() %}
 {%- for import in imports %}
-import { {{ import.name }} } from '{{ import.path }}';
+import type { {{ import.name }} } from '{{ import.path }}';
 {%- endfor %}
 
 {%- endif %}

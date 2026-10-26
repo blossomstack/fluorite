@@ -66,3 +66,41 @@ fn decoder_aliases_are_injective_and_empty_structs_need_no_local() {
         assert!(!empty.contains("const record"));
     }
 }
+
+#[test]
+fn runtime_model_imports_are_type_only_and_resolve_in_node_esm() {
+    let schema = parse_strings_to_ir(&[
+        "package language; enum ContentLanguage { English, Mandarin }",
+        "package authoring; use language.ContentLanguage; struct Draft { language: ContentLanguage } struct Envelope { draft: Draft }",
+    ]).unwrap();
+    for single in [false, true] {
+        let fs = Arc::new(MemoryFileSystem::new());
+        TsTemplateGenerator::new(
+            TypeScriptOptions::new("/out".into())
+                .with_single_file(single)
+                .with_runtime_decoders(true),
+            fs.clone(),
+        )
+        .generate_from_schema(&schema)
+        .unwrap();
+        let path = if single {
+            "/out/authoring/index.ts"
+        } else {
+            "/out/authoring/draft.ts"
+        };
+        assert!(fs
+            .get_string(path)
+            .unwrap()
+            .contains("import type { ContentLanguage } from '../language/index.js'"));
+        if !single {
+            assert!(fs
+                .get_string("/out/authoring/envelope.ts")
+                .unwrap()
+                .contains("import type { Draft } from './draft.js'"));
+            assert!(fs
+                .get_string("/out/authoring/index.ts")
+                .unwrap()
+                .contains("export * from './draft.js'"));
+        }
+    }
+}
