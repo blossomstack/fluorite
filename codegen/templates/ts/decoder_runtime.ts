@@ -8,6 +8,11 @@ class Wire {
     Wire.expect(typeof value === 'object' && value !== null && !Array.isArray(value), path, 'object');
     return value as Record<string, unknown>;
   }
+  static keys(value: Record<string, unknown>, allowed: readonly string[], path: string): void {
+    for (const key of Object.keys(value)) {
+      Wire.expect(allowed.includes(key), `${path}.${key}`, 'declared field');
+    }
+  }
   static array(value: unknown, path: string): unknown[] {
     Wire.expect(Array.isArray(value), path, 'array');
     return value;

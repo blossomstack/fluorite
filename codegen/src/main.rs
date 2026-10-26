@@ -97,6 +97,10 @@ enum Commands {
         #[arg(long, default_value = "false")]
         runtime_decoders: bool,
 
+        /// Reject undeclared object fields in runtime decoders
+        #[arg(long, default_value = "false", requires = "runtime_decoders")]
+        reject_unknown_fields: bool,
+
         /// Custom type to use for 'Any' fields (default: unknown)
         #[arg(long, default_value = "unknown")]
         any_type: String,
@@ -231,6 +235,7 @@ fn main() -> anyhow::Result<()> {
             single_file,
             any_type,
             runtime_decoders,
+            reject_unknown_fields,
             readonly,
             package_name,
         } => {
@@ -241,6 +246,7 @@ fn main() -> anyhow::Result<()> {
             let mut options = code_gen::ts::TypeScriptOptions::new(output)
                 .with_single_file(single_file)
                 .with_runtime_decoders(runtime_decoders)
+                .with_reject_unknown_fields(reject_unknown_fields)
                 .with_any_type(&any_type)
                 .with_readonly(readonly);
 

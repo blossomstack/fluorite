@@ -95,7 +95,7 @@ impl Context<'_> {
     }
 }
 
-pub(super) fn render(package: &str, types: &[IRType]) -> Result<String> {
+pub(super) fn render(package: &str, types: &[IRType], strict: bool) -> Result<String> {
     let mut ctx = Context {
         package,
         imports: BTreeSet::new(),
@@ -109,10 +109,19 @@ pub(super) fn render(package: &str, types: &[IRType]) -> Result<String> {
         ));
         match ty {
             IRType::Struct(s) => {
-                if s.fields.is_empty() {
+                if s.fields.is_empty() && !strict {
                     body.push_str("  Wire.object(value, path);\n");
                 } else {
                     body.push_str("  const record = Wire.object(value, path);\n");
+                }
+                if strict {
+                    let fields = s
+                        .fields
+                        .iter()
+                        .map(|f| quoted(&to_camel_case(f.rename.as_ref().unwrap_or(&f.name))))
+                        .collect::<Vec<_>>()
+                        .join(", ");
+                    body.push_str(&format!("  Wire.keys(record, [{fields}], path);\n"));
                 }
                 for f in &s.fields {
                     let field = quoted(&to_camel_case(f.rename.as_ref().unwrap_or(&f.name)));
@@ -142,7 +151,12 @@ pub(super) fn render(package: &str, types: &[IRType]) -> Result<String> {
                 for v in &u.variants {
                     match v {
                         IRUnionVariant::Unit { name, .. } => {
-                            body.push_str(&format!("    case {}: break;\n", quoted(name)))
+                            let keys = if strict {
+                                format!("Wire.keys(record, [{}], path); ", quoted(&u.tag_field))
+                            } else {
+                                String::new()
+                            };
+                            body.push_str(&format!("    case {}: {keys}break;\n", quoted(name)))
                         }
                         IRUnionVariant::Newtype { name, ty, .. } => {
                             let field = quoted(&u.content_field);
@@ -151,8 +165,16 @@ pub(super) fn render(package: &str, types: &[IRType]) -> Result<String> {
                                 &format!("record[{field}]"),
                                 &format!("path + '.' + {field}"),
                             );
+                            let keys = if strict {
+                                format!(
+                                    "Wire.keys(record, [{}, {field}], path); ",
+                                    quoted(&u.tag_field)
+                                )
+                            } else {
+                                String::new()
+                            };
                             body.push_str(&format!(
-                                "    case {}: {{ Wire.expect(Object.hasOwn(record, {field}), path + '.' + {field}, 'required payload'); {check} break; }}\n",
+                                "    case {}: {{ {keys}Wire.expect(Object.hasOwn(record, {field}), path + '.' + {field}, 'required payload'); {check} break; }}\n",
                                 quoted(name)
                             ));
                         }

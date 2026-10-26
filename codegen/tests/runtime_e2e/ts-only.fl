@@ -1,3 +1,5 @@
 package fixture.models;
 type AnyList = Vec<Any>;
 type AnyMap = Map<String, Any>;
+
+struct Renamed { #[rename = "wireName"] internal_name: String }
