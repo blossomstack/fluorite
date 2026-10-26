@@ -33,6 +33,9 @@ impl TsTemplateGenerator {
 
     /// Generate TypeScript code from a pre-built IR schema
     pub fn generate_from_schema(&self, schema: &IRSchema) -> Result<()> {
+        if self.options.reject_unknown_fields && !self.options.runtime_decoders {
+            anyhow::bail!("reject_unknown_fields requires runtime_decoders");
+        }
         // Validate
         let errors = Validator::new().validate(schema);
         if !errors.is_empty() {
@@ -105,7 +108,8 @@ impl TsTemplateGenerator {
         }
 
         if self.options.runtime_decoders {
-            let content = super::decoders::render(package_name, types)?;
+            let content =
+                super::decoders::render(package_name, types, self.options.reject_unknown_fields)?;
             self.fs
                 .write_file(&format!("{}/decoders.ts", output_path), content.as_bytes())?;
         }

@@ -8,6 +8,7 @@ pub struct TypeScriptOptions {
     pub any_type: String,
     pub use_readonly: bool,
     pub runtime_decoders: bool,
+    pub reject_unknown_fields: bool,
 }
 
 impl TypeScriptOptions {
@@ -19,11 +20,18 @@ impl TypeScriptOptions {
             any_type: "unknown".to_owned(),
             use_readonly: false,
             runtime_decoders: false,
+            reject_unknown_fields: false,
         }
     }
 
     pub fn with_runtime_decoders(mut self, enabled: bool) -> Self {
         self.runtime_decoders = enabled;
+        self
+    }
+
+    /// Reject undeclared object fields in generated runtime decoders (opt-in).
+    pub fn with_reject_unknown_fields(mut self, enabled: bool) -> Self {
+        self.reject_unknown_fields = enabled;
         self
     }
 

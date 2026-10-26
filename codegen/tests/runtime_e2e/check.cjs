@@ -31,3 +31,19 @@ assert.throws(() => collisions.decodeEmpty(null), TypeError);
 assert.throws(() => collisions.decodeEmpty([]), TypeError);
 assert.throws(() => collisions.decodeEmpty(1), TypeError);
 console.log('7 package collision and empty struct assertions passed');
+
+const strict = process.argv[3] === 'True';
+function extra(decoder, value) {
+  if (strict) assert.throws(() => decoder(value), TypeError);
+  else assert.deepEqual(decoder(value), value);
+}
+extra(d.decodeEntry, {...valid, surprise: 1});
+extra(d.decodeEntry, {...valid, nested: [[{count: 3, surprise: 1}]]});
+extra(d.decodeEntry, {...valid, byName: {allowedMapKey: {count: 3, surprise: 1}}});
+extra(d.decodeEntry, {...valid, event: {kind: 'Empty', payload: 'not declared'}});
+extra(d.decodeEntry, {...valid, event: {kind: 'Added', payload: {count: 1}, surprise: 1}});
+extra(collisions.decodeEmpty, {surprise: 1});
+extra(d.decodeRenamed, {wireName: 'valid', internalName: 'extra'});
+assert.deepEqual(d.decodeRenamed({wireName:'valid'}), {wireName:'valid'});
+assert.deepEqual(d.decodeAnyMap({arbitraryKey:{arbitraryValue:1}}), {arbitraryKey:{arbitraryValue:1}});
+console.log(`9 strict/default object boundary assertions passed (strict=${strict})`);

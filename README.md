@@ -513,3 +513,13 @@ existing `codegen/tests/ts_e2e` locked dependencies):
 python3 codegen/tests/runtime_e2e/run.py --generator target/debug/fluorite --tsc codegen/tests/ts_e2e/node_modules/.bin/tsc
 python3 codegen/tests/runtime_e2e/swift.py --generator target/debug/fluorite
 ```
+
+### Strict runtime object boundaries
+
+Add `--reject-unknown-fields` alongside `--runtime-decoders` to reject undeclared
+own JSON object keys, recursively through structs and tagged unions. Unit union
+variants accept only their tag; payload variants accept tag and payload. Renamed
+fields use their generated wire names. Maps retain arbitrary valid keys and `Any`
+remains intentionally unconstrained. This mode does not replace domain validation.
+The default decoder behavior still accepts extra keys for existing consumers.
+Library callers use `with_reject_unknown_fields(true)` with runtime decoders enabled.
