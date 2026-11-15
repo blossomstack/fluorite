@@ -387,6 +387,16 @@ SwiftOptions::new(output_dir)
     .with_visibility(SwiftVisibility::Public)  // public, internal, or package
 ```
 
+Generated Swift that uses `Any` imports `FluoriteRuntime` for `AnyCodable`. Add it to an app or package by the repo URL:
+
+```swift
+.package(url: "https://github.com/blossomstack/fluorite", from: "0.13.0"),
+// target dependency:
+.product(name: "FluoriteRuntime", package: "fluorite"),
+```
+
+In Xcode: File → Add Package Dependencies → `https://github.com/blossomstack/fluorite`.
+
 Generated Swift types conform to `Codable`, `Equatable`, and `Sendable`. Unions include a custom `Codable` implementation for adjacently tagged JSON format.
 
 ---

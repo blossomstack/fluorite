@@ -142,3 +142,5 @@ jobs:
       - run: npm ci --ignore-scripts --prefix codegen/tests/ts_e2e
       - run: python3 codegen/tests/runtime_e2e/run.py --generator target/debug/fluorite --tsc codegen/tests/ts_e2e/node_modules/.bin/tsc
       - run: python3 codegen/tests/runtime_e2e/swift.py --generator target/debug/fluorite
+      # Apps add the runtime by the repo URL, which reads the root manifest.
+      - run: swift test
