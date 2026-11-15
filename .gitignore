@@ -2,3 +2,5 @@ target/
 .idea/
 .worktrees/
 node_modules/
+.build/
+.swiftpm/
